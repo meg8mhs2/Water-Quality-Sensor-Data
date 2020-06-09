@@ -63,8 +63,9 @@ To facilitate data exploration, below I've defined a function that plots a time 
 # plots time series of a given variable in the WQ dataframe
 # var (string): variable name to be plotted
 # year, month, day (optional, numeric): year, month, and day to be plotted (can specify all, some, or none)
+# if month is specified but not year, separate plots are generated for each year
 # sep (boolean): plots MC and SI on same plot if false or side-by-side plots if true
-plot_time_series <- function(var, year = NA, month = NA, day = NA, sep = F){
+plot_time_series_WQ <- function(var, year = NA, month = NA, day = NA, sep = F){
   # filter for specified year
   if(!is.na(year)){
     all_WQ <- all_WQ %>% filter(year(date) == year)
@@ -79,16 +80,36 @@ plot_time_series <- function(var, year = NA, month = NA, day = NA, sep = F){
   }
   # if sep argument is true, plot with facet wrap
   # otherwise, plot without facet wrap
-  if(sep){
+  if(sep & is.na(year) &!is.na(month)){
+    all_WQ %>% 
+    ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+    geom_line() +
+    facet_grid(site ~ as.factor(year(date)), scales = "free_x")
+  } else if (sep){
     all_WQ %>% 
     ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
     geom_line() +
     facet_wrap(~site)
-  } else {
+  } else if (is.na(year) &!is.na(month)){
+    all_WQ %>% 
+    ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+    geom_line() +
+    facet_wrap(~as.factor(year(date)), scales = "free_x")
+  } else{
     all_WQ %>% 
     ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
     geom_line()
   }
+  # if(sep){
+  #   all_WQ %>% 
+  #   ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+  #   geom_line() +
+  #   facet_wrap(~site)
+  # } else {
+  #   all_WQ %>% 
+  #   ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+  #   geom_line()
+  # }
 }
 
 
@@ -96,13 +117,16 @@ plot_time_series <- function(var, year = NA, month = NA, day = NA, sep = F){
 
 ```{r plotting function examples}
 # plot of temperature for June 2016
-plot_time_series("Temp", year = 2016, month = 6)
+plot_time_series_WQ("Temp", year = 2016, month = 6)
 
 # separate plots of nitrate for all of 2016
-plot_time_series("NO3_mgL", year = 2016, sep = T)
+plot_time_series_WQ("NO3_mgL", year = 2016, sep = T)
 
 # plot of turbidity for June 9, 2016
-plot_time_series("Turb", year = 2016, month = 6, day = 9)
+plot_time_series_WQ("Turb", year = 2016, month = 6, day = 9)
+
+# plots of temperature in the month of July for all years at both sites
+plot_time_series_WQ("Temp", month = 7, sep = T)
 ```
 
 
@@ -126,6 +150,51 @@ date_discharge <- discharge %>%
 WQ_discharge <- full_join(daily_WQ, date_discharge, by = "date") %>% 
   rename(discharge = X_00060_00003)
 
-quickplot(x = WQ_discharge$discharge, y = WQ_discharge$CHLugL)
+
+```
+
+Below, I've defined a function for looking at just the discharge data. It plots a time series of discharge and, like with the WQ time series plotting function, you can specify a year and/or month to plot (otherwise, all data is plotted). If you specify a month but not a year, the time series for the given month will be shown on separate plots for each year.
+```{r discharge time series function}
+# plots the discharge over time
+# year, month (optional, numeric) specify the specific year and/or month to plot (if not specified, all data will be plotted)
+# if month is given but not year, all years will be plotted separately.
+plot_time_series_discharge <- function(year = NA, month = NA){
+  # filter for specified year
+  if(!is.na(year)){
+    WQ_discharge <- WQ_discharge %>% filter(year(date) == year)
+  }
+  # filter for specified month
+  if(!is.na(month)){
+    WQ_discharge <- WQ_discharge %>% filter(month(date) == month)
+  }
+  
+  # if month is specified but not year, plot each year separately
+  # otherwise, just make one plot
+  if(is.na(year) & !is.na(month)){
+    WQ_discharge %>% 
+      ggplot(aes(x = date, y = discharge)) +
+      geom_line() +
+      facet_wrap(~as.factor(year(date)), scales = "free_x")
+  } else {
+  WQ_discharge %>% 
+    ggplot(aes(x = date, y = discharge)) +
+    geom_line()
+  }
+}
+```
+
+Here are some examples of how the discharge time series plotting function is used:
+```{r testing discharge plotting function}
+# plot of all discharge data over time
+plot_time_series_discharge()
+
+# plot of discharge data from 2016
+plot_time_series_discharge(year = 2016)
+
+# plot of discharge data from June 2016
+plot_time_series_discharge(year = 2016, month = 6)
+
+# plots of discharge data from July of each year
+plot_time_series_discharge(month = 7)
 ```
 
