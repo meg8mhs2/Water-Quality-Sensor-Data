@@ -1,0 +1,119 @@
+---
+title: 'Preliminary Exploration: Sensors'
+author: "Taryn Waite"
+date: "6/4/2020"
+output: html_document
+---
+
+This document contains my preliminary exploration of the water quality sensor data and discharge data.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dataRetrieval)
+library(tidyverse)
+library(lubridate)
+```
+
+## Sensor Data Wrangling
+
+Reading in the data
+```{r read data}
+# main channel WQ data
+mc <- read_csv("MC_WQ.csv")
+# backwater WQ data
+si <- read_csv("SI_WQ.csv")
+
+# discharge data
+discharge <- readNWISdv(siteNumbers = "05378500", parameterCd="00060", startDate = "2015-06-30", endDate = "2018-10-12")
+
+```
+
+Here, I convert the date column into Date objects and also create a date-time column
+```{r date and time}
+mc <- mc %>% 
+  mutate(date = mdy(`YYYY-MM-DD`)) %>% 
+  mutate(dateTime = mdy_hms(paste(`YYYY-MM-DD`, as.character(`hh:mm`))))
+
+si <- si %>% 
+  mutate(date = ymd(`YYYY-MM-DD`)) %>% 
+  mutate(dateTime = ymd_hms(paste(`YYYY-MM-DD`, as.character(`hh:mm`))))
+```
+
+
+Below, I combine the SI and MC data into one dataframe with a column called "site" taking the value "SI" or "MC".
+```{r combining si and mc}
+# first we need a new column specifying if si or mc
+si_with_ID <- si %>% mutate(site = "SI")
+mc_with_ID <- mc %>% mutate(site = "MC")
+
+# get rid of original date and time columns
+# (don't need these anymore with new date and dateTime columns)
+si_with_ID <- si_with_ID %>% select(-c(1,2, 23))
+mc_with_ID <- mc_with_ID %>% select(-c(1,2, 23))
+
+# next we can merge the two data frames by row
+all_WQ <- bind_rows(si_with_ID, mc_with_ID)
+```
+
+## Water Quality Data Exploration 
+
+To facilitate data exploration, below I've defined a function that plots a time series of a given variable for both sites (either on one plot or side-by-side). A year and/or month and/or day can be specified; otherwise, all time series data will be plotted.
+```{r}
+# plots time series of a given variable in the WQ dataframe
+# var (string): variable name to be plotted
+# year, month, day (optional, numeric): year, month, and day to be plotted (can specify all, some, or none)
+# sep (boolean): plots MC and SI on same plot if false or side-by-side plots if true
+plot_time_series <- function(var, year = NA, month = NA, day = NA, sep = F){
+  # filter for specified year
+  if(!is.na(year)){
+    all_WQ <- all_WQ %>% filter(year(date) == year)
+  }
+  # filter for specified month
+  if(!is.na(month)){
+    all_WQ <- all_WQ %>% filter(month(date) == month)
+  }
+  # filter for specified day
+  if(!is.na(day)){
+    all_WQ <- all_WQ %>% filter(day(date) == day)
+  }
+  # if sep argument is true, plot with facet wrap
+  # otherwise, plot without facet wrap
+  if(sep){
+    all_WQ %>% 
+    ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+    geom_line() +
+    facet_wrap(~site)
+  } else {
+    all_WQ %>% 
+    ggplot(aes_string(x = "dateTime", y = var, col = "site")) +
+    geom_line()
+  }
+}
+
+
+```
+
+## Merging WQ and discharge data
+
+Below, I merge the WQ and discharge data into one dataframe that has average values of WQ variables for each day, as well as the discharge for the day.
+```{r}
+# group water quality data by date, giving dataframe with mean values for each day
+# here, I just included variables we will likely need, but may need to add more later
+daily_WQ <- all_WQ %>%
+  group_by(date) %>% 
+  summarise (date = mean(date), Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL = mean(BGAugL),
+             FDOMqsu = mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+
+# select just date and discharge from discharge data, and rename date column to match WQ
+date_discharge <- discharge %>% 
+  select(c(3, 4)) %>% 
+  rename(date = Date)
+
+# join daily WQ and discharge data and rename discharge column
+WQ_discharge <- full_join(daily_WQ, date_discharge, by = "date") %>% 
+  rename(discharge = X_00060_00003)
+
+quickplot(x = WQ_discharge$discharge, y = WQ_discharge$CHLugL)
+```
+
