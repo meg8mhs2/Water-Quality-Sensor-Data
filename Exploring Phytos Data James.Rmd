@@ -1,0 +1,203 @@
+---
+title: "Exploring Phytos Data James"
+author: "James Pack"
+date: "6/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Introduction
+
+This is my exploration of the phytoplankton data. I've used the same code as my data cleaning document in the repository to set up the data, seen below.
+
+#Data Cleaning
+
+```{r cleaning, echo=F}
+# Phytoplankton Data Cleaning James
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+
+phytos_9606 <- read_csv('Phytos_1996-2006.csv')
+phytos_0812 <- read_csv('Phytos_2008-2012.csv')
+phyto_info <- read_csv('Phyto_info_WQdata.csv')
+
+# Combining data from all time periods
+phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
+
+# Adding water quality data, joined by SHEETBAR (ID) of sample
+phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
+
+# Cleaning the dates
+phyto$DATE <- phyto$DATE %>% mdy()
+
+# Seeing the table
+phyto %>% head()
+```
+
+#Exploring the Data
+
+To start exploration, I'm using plots to see trends.
+##Trends over time
+```{r tallytime, echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(ggthemes)
+phyto %>% ggplot(aes(DATE,TALLY)) +
+  geom_point(aes(color=FLDNUM)) +
+  ggtitle('Tally Over Time') +
+  theme_gdocs()
+```
+
+I used color to denote different locations in the field to see if there were any noticeable trends. Aside from the outliers, it seems as though there was an increase in phytoplankton in 2006 from 2004, but by 2008 the observations all seemed to return to the 2004 level or lower. Trends in water quality between 2004 and 2006 may be interesting to examine as well as the outliers. Similarly, in 2012 there was considerably more variation than years prior. Patterns in the most recent observations may be similarly interesting, and comparing them to patterns in the early 2000s may be useful to see if the conditions/changes were similar.
+
+I also want to compare the trend of tally and temperature to see if there is a noticeable impact there.
+##Trends with temperature
+```{r tallytemp, echo=FALSE, warning=FALSE}
+phyto %>% ggplot(aes(TEMP,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Tally Response to Temperature') +
+  xlab('Temperature (Celsius)') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+This time, rather than differing locations, I used color to differentiate between divisions in order to see if different divisions responded differently to water temperature. Cyanobacteria seemed to greatly favor warmer water temperatures, so I'm going to remove them from the data and plot all other points to see if there's a trend.
+```{r no_cyano_temp, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION != 'Cyanobacteria') %>% 
+  ggplot(aes(TEMP,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Tally Response to Temperature') +
+  xlab('Temperature (Celsius)') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+After removing Cyanobacteria, two trends emerged that I could see. Bacillariophyta seemed to much prefer the colder water temperatures, while Cryptophyta experienced more of an increase as water temperature increased. Chlorophyta seemed to be relatively constant with no visible variation, and Chrysophyta, Euglenophyta, and Pyrrophyta are barely observable at all.
+
+To focus on the two divisions I saw any sort of trend in (Bacillariophyta and Cryptophyta), I am going to plot them again by temperature separately to see if anything  interesting occurs. I'm also going to add a line to the plot to see what relationship is observable.
+```{r three_trends, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION == c('Bacillariophyta','Cryptophyta')) %>% 
+  ggplot(aes(TEMP,TALLY)) +
+  geom_point() +
+  facet_wrap(~DIVISION,nrow=2) +
+  geom_smooth(method=lm) +
+  ggtitle('Tally Response to Temperature') +
+  xlab('Temperature (Celsius)') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Somewhat surprisingly, although there was some variation in each, there was next to no observable effect of temperature on the tally observed. Bacillariophyta seems to have a slight downward trend with an increase in temperature, but not in any significant way. 
+
+##Trends with latitude
+Something that may be worth noting is that the latitude (using Northing as the variable) may have an effect on the tally. Like before, Cyanobacteria are filtered out because of how numerous they've become.
+```{r latitude_trend, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION != 'Cyanobacteria') %>% 
+  ggplot(aes(NORTHING,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Tally Response to Northing') +
+  xlab('Northing') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Interestingly, Bacillariophyta seem to slightly increase in tally as the northing increases. This may help explain the slight trend observed when comparing the trend caused by temperature.
+
+The next graphic focuses solely on Bacillariophyta.
+```{r bacill_trend, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION == 'Bacillariophyta') %>% 
+  ggplot(aes(NORTHING,TALLY)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Bacillariophyta Response to Northing') +
+  xlab('Northing') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+This has produced the same slight trend observed before, but in the opposite direction (the more north you are the colder). Interesting, but not particularly significant. Probably a good time to move on to water quality measures instead to see if interesting trends emerge.
+
+#Water Quality Trends
+##pH Responses
+```{r pH_trend, echo=F, warning=F}
+phyto %>%
+  filter(is.na(DIVISION) == F) %>% 
+  ggplot(aes(PH,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  facet_wrap(~DIVISION,nrow=3) +
+  ggtitle('Tally Response to pH') +
+  xlab('pH') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Filtering out Cyanobacteria because of the high tally counts, you get
+
+```{r pH_no_cyan, echo=F, warning=F}
+phyto %>%
+  filter(is.na(DIVISION) == F) %>% 
+  filter(DIVISION != 'Cyanobacteria') %>% 
+  ggplot(aes(PH,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  facet_wrap(~DIVISION,nrow=3) +
+  ggtitle('Tally Response to pH') +
+  xlab('pH') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+This shows trends in Bacillariophyta, Chlorophyta, and Cryptophyta that were not observable with the Cyanobacteria graphic present. Now, examining these three divisions only and adding a line of best fit:
+```{r pH_interesting_trends, echo=F, warning=F}
+phyto %>%
+  filter(is.na(DIVISION) == F) %>% 
+  filter(DIVISION == c('Bacillariophyta','Chlorophyta','Cryptophyta')) %>% 
+  ggplot(aes(PH,TALLY)) +
+  geom_point(aes(color=DIVISION)) +
+  facet_wrap(~DIVISION,nrow=3) +
+  geom_smooth(method=lm) +
+  ggtitle('Tally Response to pH') +
+  xlab('pH') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Much like the Cyanobacteria samples, Tally increases slightly with each of these divisions as pH increases. 
+
+#Cyanobacteria
+So far in everything I've done, Cyanobacteria as a division has severely limited the amount I can learn about the others because of the frequency. Instead, I'm going to go ahead and focus on it to see if I can learn something interesting about the genera observed within the division, and how they differ.
+
+##Over Time
+```{r cyano_time, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION == 'Cyanobacteria') %>% 
+  ggplot(aes(DATE,TALLY)) +
+  geom_point() +
+  facet_wrap(~GENUS,nrow=3) +
+  ggtitle('Cyanobacteria over time') +
+  xlab('Date') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Aside from being awful to read, the plot does show that only a few genera changed over time, while several were hardly observed at all. Now to redo the plot for a few specific genera that had over 1500 observations.
+```{r cyano_filter_time, echo=F, warning=F}
+phyto %>% 
+  filter(DIVISION == 'Cyanobacteria') %>% 
+  filter(GENUS == 'Planktolyngbya limnetica' | GENUS == 'Aphanocapsa delicatissima' | GENUS == 'Aphanizomenon sp.' | GENUS == 'Merismopedia tenuissima' | GENUS == 'Microcystis aeruginosa') %>% 
+  ggplot(aes(DATE,TALLY)) +
+  geom_point() +
+  facet_wrap(~GENUS,nrow=2) +
+  geom_smooth(method=lm) +
+  ggtitle('Cyanobacteria over time') +
+  xlab('Date') +
+  ylab('Tally') +
+  theme_gdocs()
+```
+
+Just to see, unsure how I can rewrite the above plot without having to know each of the genera names. Going to leave that as a project for tomorrow.
