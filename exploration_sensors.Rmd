@@ -5,7 +5,7 @@ date: "6/4/2020"
 output: html_document
 ---
 
-This document contains my preliminary exploration of the water quality sensor data and discharge data.
+This document contains my preliminary exploration of the water quality sensor data and discharge data. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -20,9 +20,9 @@ library(lubridate)
 Reading in the data
 ```{r read data}
 # main channel WQ data
-mc <- read_csv("MC_WQ.csv")
+mc <- read_csv("data/MC_WQ.csv")
 # backwater WQ data
-si <- read_csv("SI_WQ.csv")
+si <- read_csv("data/SI_WQ.csv")
 
 # discharge data
 discharge <- readNWISdv(siteNumbers = "05378500", parameterCd="00060", startDate = "2015-06-30", endDate = "2018-10-12")
@@ -59,7 +59,7 @@ all_WQ <- bind_rows(si_with_ID, mc_with_ID)
 ## Water Quality Data Exploration 
 
 To facilitate data exploration, below I've defined a function that plots a time series of a given variable for both sites (either on one plot or side-by-side). A year and/or month and/or day can be specified; otherwise, all time series data will be plotted.
-```{r}
+```{r time series plot function}
 # plots time series of a given variable in the WQ dataframe
 # var (string): variable name to be plotted
 # year, month, day (optional, numeric): year, month, and day to be plotted (can specify all, some, or none)
@@ -93,6 +93,18 @@ plot_time_series <- function(var, year = NA, month = NA, day = NA, sep = F){
 
 
 ```
+
+```{r plotting function examples}
+# plot of temperature for June 2016
+plot_time_series("Temp", year = 2016, month = 6)
+
+# separate plots of nitrate for all of 2016
+plot_time_series("NO3_mgL", year = 2016, sep = T)
+
+# plot of turbidity for June 9, 2016
+plot_time_series("Turb", year = 2016, month = 6, day = 9)
+```
+
 
 ## Merging WQ and discharge data
 
