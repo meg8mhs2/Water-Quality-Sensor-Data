@@ -1,0 +1,68 @@
+---
+title: "Identifying Storm Events"
+author: "Taryn Waite"
+date: "6/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Below, I tried identifying each day as a "storm" day or a "baseline" day depending on the change in discharge between the day and the next day. A day is considered "storm" if the discharge increases by more than 10% in the day. However, I don't think this worked well, judging by the plot I created at the end. It mostly just catches the very beginning of what seem to be storm events.
+
+```{r}
+
+## tried with dplyr but I couldn't get it to work
+dates <- discharge[[3]]
+
+get_discharge <- function(date){
+  if(date %in% dates){
+    day_data <- discharge %>% 
+      filter(Date == date)
+    return((day_data[[4]]))
+  }
+  else{
+    print("next day NA")
+    return(NA)
+  }
+}
+
+
+get_change_discharge <- function(date){
+  return(get_discharge(date + 1 ) - get_discharge(date)) 
+}
+
+## this is where it wouldn't work 
+#discharge %>%
+  #mutate(change = get_change_discharge(Date))
+
+
+## instead, I just found the difference by arranging by date and
+## subtracting each from the previous (this works because no days are skipped)
+
+# arrange by date
+temp <- discharge %>% 
+  arrange(Date) 
+
+# calculate difference column
+temp$diff <- lead(temp$X_00060_00003, 1) - temp$X_00060_00003
+
+# give storm or baseline status depending on magnitude of change
+temp2 <- temp %>% 
+  mutate(status = case_when(abs(diff) > X_00060_00003/10 ~ "storm", abs(diff) <= X_00060_00003/10 ~"base"))
+         
+storm_discharge <- full_join(temp2, discharge) %>% 
+  rename(daily_discharge = X_00060_00003)
+
+# plot for 2017
+storm_discharge %>% 
+  filter(year(Date) == 2017) %>% 
+  ggplot(aes(x = Date, y = daily_discharge)) +
+  geom_line() +
+  geom_point(aes(x = Date, y = daily_discharge, col = status)) 
+
+
+```
+
