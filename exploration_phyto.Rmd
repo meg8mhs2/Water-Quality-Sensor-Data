@@ -1,0 +1,104 @@
+---
+title: 'Preliminary Exploration: Phytoplankton'
+author: "Taryn Waite"
+date: "6/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+```
+
+Reading in the data:
+There are phytoplankton species sample datasets for 1996-2006 and for 2008-2012, as well as a water quality dataset.
+```{r}
+phyto_96_06 <- read_csv("Phytos_1996-2006.csv")
+phyto_08_12 <- read_csv("Phytos_2008-2012.csv")
+phyto_wq <- read_csv("Phyto_info_WQdata.csv")
+```
+
+## Summarizing the sampling information
+First, the total number of samples taken at each site from 2008-2012 and from 1996-2006
+```{r samples per site}
+num_samples_08 <- rich_sample_08 %>% count(site)
+num_samples_96 <- rich_sample_96 %>% count(site)
+```
+
+```{r}
+# data frame with just sample ID, site number, and date
+sampling_info <- phyto_wq %>% 
+  select(c(SHEETBAR, FLDNUM, DATE)) %>% 
+  mutate(date = mdy(DATE))
+  #separate(DATE, c("month", "day", "year"), "/")
+
+# scatter plot with a point for each sample (time along x axis)
+sampling_info %>% 
+  ggplot(aes(x = date, y = FLDNUM)) +
+  geom_point(alpha = 0.5)
+
+# plot of distributions of samples over time for each site
+sampling_info %>% 
+  drop_na() %>% 
+  ggplot(aes(x = as.factor(FLDNUM), y = date)) +
+  geom_violin() +
+  xlab("Field Station") +
+  ylab("")
+      
+```
+
+
+## Phytoplankton community information
+
+### Overall richness 
+```{r}
+rich_96_06 <- phyto_96_06 %>% 
+  summarize(richness = length(unique(GENUS)))
+
+rich_08_12 <- phyto_08_12 %>% 
+  summarize(richness = length(unique(GENUS)))
+
+# dataframes with sample ID, site number, and richness
+rich_sample_08 <- phyto_08_12 %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(richness = length(unique(GENUS))) %>% 
+  mutate(site = as.factor(floor(SHEETBAR/1000000 - 40)))
+
+rich_sample_96 <- phyto_96_06 %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(richness = length(unique(GENUS))) %>% 
+  mutate(site = as.factor(floor(SHEETBAR/1000000 - 40)))
+
+
+# plots of distribution of richnesses at each site
+rich_sample_08 %>%  ggplot(aes(x = site, y = richness)) +
+    geom_violin()
+
+rich_sample_96 %>%  
+  drop_na() %>% 
+  ggplot(aes(x = site, y = richness)) +
+    geom_violin()
+
+
+# data frame with richness and site info for each sample for all years
+all_samples_richness <- full_join(rich_sample_96, rich_sample_08) %>% 
+  right_join(sampling_info)
+
+# scatter plot of richnesses over time for each site
+all_samples_richness %>% 
+  ggplot(aes(x = date, y = richness, col = site)) +
+  geom_point() +
+  #geom_smooth(se = F) +
+  facet_wrap(~site)
+
+
+# plot of distribution of richnesses at each site for all years
+all_samples_richness %>% 
+  drop_na() %>% 
+  ggplot(aes(x = site, y = richness)) +
+  geom_boxplot()
+
+
+```
+
