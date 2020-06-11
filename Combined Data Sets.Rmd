@@ -1,0 +1,68 @@
+---
+title: "Combined Data Sets"
+author: "Megan J"
+date: "June 11, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(dataRetrieval)
+library(lubridate)
+set.seed(2002)
+```
+
+
+
+```{r Import Data}
+filename1 <- file.path("MC_WQ.csv")
+data_MC_raw <- read_csv(filename1)
+data_dis_MC_raw <- dataRetrieval::readNWISdv('05378500', '00060', startDate =  "2015-06-30", endDate = "2018-10-12")
+filename2 <- file.path("SI_WQ.csv")
+data_SI_raw <- read_csv(filename2)
+data_dis_SI_raw <- dataRetrieval::readNWISdv('05378500', '00060', startDate =  "2015-06-01", endDate = "2018-10-10")
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r Clean Data}
+data_MC<- data_MC_raw %>% 
+  mutate(Date= mdy(`YYYY-MM-DD`)) %>%
+  filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL))  %>%
+  group_by(Date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL)) %>%
+  mutate(Year = year(Date), Month= month(Date))
+
+data_SI<- data_SI_raw %>% 
+  mutate(Date= mdy(`YYYY-MM-DD`)) %>%
+  filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL))  %>%
+  group_by(Date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL)) %>%
+  mutate(Year = year(Date), Month= month(Date))
+```
+
+```{r Discharge Data Clean}
+data_Dis_MC <- data_dis_MC_raw %>% 
+  rename(Discharge= `X_00060_00003`) %>% 
+  select(Date, Discharge)
+data_Dis_SI <- data_dis_SI_raw %>% 
+  rename(Discharge= `X_00060_00003`) %>% 
+  select(Date, Discharge)
+```
+
+```{r Join Data}
+Joint_Data_MC<-left_join(data_MC, data_Dis_MC, by=c("Date"="Date"))
+Joint_Data_SI<-left_join(data_SI, data_Dis_SI, by=c("Date"="Date"))
+```
+
+```{r}
+Plot<- ggplot(data = Joint_Data_MC, mapping=aes(x= Discharge, y=Turb))+
+  geom_point(aes(color=as.character(Year))) +
+  geom_smooth(method="lm", se=FALSE)
+Plot
+```
+
