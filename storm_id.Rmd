@@ -44,21 +44,39 @@ get_change_discharge <- function(date){
 
 # arrange by date
 temp <- discharge %>% 
+  rename(daily_discharge = X_00060_00003) %>% 
   arrange(Date) 
 
 # calculate difference column
-temp$diff <- lead(temp$X_00060_00003, 1) - temp$X_00060_00003
+temp$diff <- lead(temp$daily_discharge, 1) - temp$daily_discharge
 
 # give storm or baseline status depending on magnitude of change
-temp2 <- temp %>% 
-  mutate(status = case_when(abs(diff) > X_00060_00003/10 ~ "storm", abs(diff) <= X_00060_00003/10 ~"base"))
+storm1 <- temp %>% 
+  mutate(status = case_when(abs(diff) > daily_discharge/10 ~ "storm", abs(diff) <= daily_discharge/10 ~"base"))
          
-storm_discharge <- full_join(temp2, discharge) %>% 
-  rename(daily_discharge = X_00060_00003)
 
 # plot for 2017
-storm_discharge %>% 
+storm1 %>% 
   filter(year(Date) == 2017) %>% 
+  ggplot(aes(x = Date, y = daily_discharge)) +
+  geom_line() +
+  geom_point(aes(x = Date, y = daily_discharge, col = status)) 
+
+
+```
+
+Maybe, since this technique seems to capture the beginning of storm events, we could flag when the discharge *increases* by at least 10% and then also flag all the days after until the discharge returns to the level it was on the initial flagged day
+
+```{r}
+# new version of storm dataframe which flags just positive increases in discharge by over 10%
+# to capture the start of a storm
+storm2 <- temp %>% 
+  mutate(status = case_when(diff > daily_discharge/10 ~ "storm", diff <= daily_discharge/10 ~"base"))
+
+# plot for 2016
+storm2 %>% 
+  filter(year(Date) == 2018) %>% 
+  #filter(month(Date) == 7) %>% 
   ggplot(aes(x = Date, y = daily_discharge)) +
   geom_line() +
   geom_point(aes(x = Date, y = daily_discharge, col = status)) 
