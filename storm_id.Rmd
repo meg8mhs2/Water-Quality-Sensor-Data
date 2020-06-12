@@ -75,12 +75,101 @@ storm2 <- temp %>%
 
 # plot for 2016
 storm2 %>% 
-  filter(year(Date) == 2018) %>% 
-  #filter(month(Date) == 7) %>% 
+  filter(year(Date) == 2015) %>% 
+  filter(month(Date) %in% c(6, 7, 8, 9)) %>% 
   ggplot(aes(x = Date, y = daily_discharge)) +
   geom_line() +
-  geom_point(aes(x = Date, y = daily_discharge, col = status)) 
+  geom_point(aes(x = Date, y = daily_discharge, col = status))  
 
 
+```
+
+Below are some examples of concentration-discharge relationships during storm events.
+
+```{r}
+WQ_discharge %>% 
+  filter(year(date) == 2016)  %>%
+  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
+  ggplot(aes(x = date, y = discharge)) +
+  geom_point() +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2016)  %>%
+  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
+  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2016)  %>%
+  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
+  arrange(date) %>% 
+  ggplot(aes(x = discharge, y = NO3_mgL, col = site)) +
+  geom_path() +
+  facet_grid(rows = vars(site), cols = NULL, scales = "free")
+  
+```
+
+```{r}
+WQ_discharge %>% 
+  filter(year(date) == 2017)  %>%
+  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
+  ggplot(aes(x = date, y = discharge)) +
+  geom_point() +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2017)  %>%
+  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
+  ggplot(aes(x = date, y = CHLugL, col = site)) +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2017)  %>%
+  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
+  arrange(date) %>% 
+  ggplot(aes(x = discharge, y = CHLugL, col = site)) +
+  geom_path() 
+```
+
+```{r}
+WQ_discharge %>% 
+  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
+  ggplot(aes(x = date, y = discharge)) +
+  geom_point() +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
+  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
+  arrange(date) %>% 
+  ggplot(aes(x = discharge, y = CHLugL, col = site)) +
+  geom_path() 
+```
+
+```{r}
+WQ_discharge %>% 
+  filter(year(date) == 2015)  %>%
+  filter((day(date) > 5 & month(date) == 7) ) %>% 
+  ggplot(aes(x = date, y = discharge)) +
+  geom_point() +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2015)  %>%
+  filter((day(date) > 5 & month(date) == 7) ) %>%
+  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
+  geom_line()
+
+WQ_discharge %>% 
+  filter(year(date) == 2015)  %>%
+  filter((day(date) > 5 & month(date) == 7) ) %>%
+  arrange(date) %>% 
+  ggplot(aes(x = discharge, y = NO3_mgL, col = site)) +
+  geom_path() 
 ```
 
