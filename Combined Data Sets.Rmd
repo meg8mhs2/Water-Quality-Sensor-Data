@@ -35,14 +35,16 @@ data_MC<- data_MC_raw %>%
   filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL))  %>%
   group_by(Date) %>% 
   summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL)) %>%
-  mutate(Year = year(Date), Month= month(Date))
+  mutate(Year = year(Date), Month= month(Date)) %>%
+  filter(Turb<35)
 
 data_SI<- data_SI_raw %>% 
   mutate(Date= mdy(`YYYY-MM-DD`)) %>%
   filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL))  %>%
   group_by(Date) %>% 
   summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL)) %>%
-  mutate(Year = year(Date), Month= month(Date))
+  mutate(Year = year(Date), Month= month(Date)) %>%
+  filter(Turb<35)
 ```
 
 ```{r Discharge Data Clean}
@@ -61,8 +63,19 @@ Joint_Data_SI<-left_join(data_SI, data_Dis_SI, by=c("Date"="Date"))
 
 ```{r}
 Plot<- ggplot(data = Joint_Data_MC, mapping=aes(x= Discharge, y=Turb))+
-  geom_point(aes(color=as.character(Year))) +
-  geom_smooth(method="lm", se=FALSE)
+  geom_point(aes(color=month(Month, label=TRUE))) +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(color="Month")+
+  ylab("Turbidity") + 
+  ggtitle("Turbidity vs Discharge for the Main Channel")
+Plot2<- ggplot(data = Joint_Data_SI, mapping=aes(x= Discharge, y=Turb))+
+  geom_point(aes(color=month(Month, label=TRUE))) +
+  geom_smooth(method="lm", se=FALSE) +
+  labs(color="Month")+
+  ylab("Turbidity") + 
+  ggtitle("Turbidity vs Discharge for the Backwater")
 Plot
+Plot2
+
 ```
 

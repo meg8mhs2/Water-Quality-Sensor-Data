@@ -44,30 +44,75 @@ To start exploration, I'm using plots to see trends.
 ```{r tallytime, echo=FALSE, warning=FALSE}
 library(ggplot2)
 library(ggthemes)
-phyto %>% ggplot(aes(DATE,TALLY)) +
-  geom_point(aes(color=FLDNUM)) +
-  ggtitle('Tally Over Time') +
-  theme_gdocs()
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  facet_wrap(~FLDNUM, nrow=3) +
+  ggtitle('Biomass Over Time') +
+  xlab('Date') +
+  ylab('Total Biomass')
 ```
 
-I used color to denote different locations in the field to see if there were any noticeable trends. Aside from the outliers, it seems as though there was an increase in phytoplankton in 2006 from 2004, but by 2008 the observations all seemed to return to the 2004 level or lower. Trends in water quality between 2004 and 2006 may be interesting to examine as well as the outliers. Similarly, in 2012 there was considerably more variation than years prior. Patterns in the most recent observations may be similarly interesting, and comparing them to patterns in the early 2000s may be useful to see if the conditions/changes were similar.
+I used different locations in the field to see if there were any noticeable trends unique to each data collection point. Aside from the outliers, it seems as though there was an increase in phytoplankton overall in the later period of the data collection, especially in stations 1, 2, and 3. The spikes were all in Bacillariophyta, so it will be interesting to see trends in other Divisions if Bacillariophyta are removed. 
+
+```{r tallytime, echo=FALSE, warning=FALSE}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(DIVISION != 'Bacillariophyta') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  facet_wrap(~FLDNUM, nrow=3) +
+  ggtitle('Biomass Over Time') +
+  xlab('Date') +
+  ylab('Total Biomass')
+```
 
 I also want to compare the trend of tally and temperature to see if there is a noticeable impact there.
 ##Trends with temperature
 ```{r tallytemp, echo=FALSE, warning=FALSE}
-phyto %>% ggplot(aes(TEMP,TALLY)) +
+phyto %>% ggplot(aes(TEMP,`TOTAL BV_um3L`/1e09)) +
   geom_point(aes(color=DIVISION)) +
-  ggtitle('Tally Response to Temperature') +
+  geom_smooth(method=lm) +
+  ggtitle('Biomass Response to Temperature') +
   xlab('Temperature (Celsius)') +
-  ylab('Tally') +
+  ylab('Biomass') +
   theme_gdocs()
 ```
+
+This plot doesn't emphasize just how many points are on the lower end, so while it seems that higher temperatures have a trend to decrease biomass, adding the line of best fit better shows that the trend is not noticeable. Recreating the same plot but without the Bacillariophyta that have considerably higher observations than the other divisions, you get
+
+```{r tallytemp, echo=FALSE, warning=FALSE}
+phyto %>% 
+  filter(DIVISION != 'Bacillariophyta') %>% 
+  ggplot(aes(TEMP,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  geom_smooth(method=lm) +
+  ggtitle('Biomass Response to Temperature') +
+  xlab('Temperature (Celsius)') +
+  ylab('Biomass') +
+  theme_gdocs()
+```
+
+Now there are almost no observable trends, with only a few outliers present. This suggests that Bacillariophyta are more affected by temperatures than the other divisions, so flipping the filter the opposite way may show a trend.
+
+```{r tallytemp, echo=FALSE, warning=FALSE}
+phyto %>% 
+  filter(DIVISION == 'Bacillariophyta') %>% 
+  ggplot(aes(TEMP,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  geom_smooth(method=lm) +
+  ggtitle('Biomass Response to Temperature') +
+  xlab('Temperature (Celsius)') +
+  ylab('Biomass') +
+  theme_gdocs()
+```
+
+The trend here is still not pronounced because of just how many points are near the bottom of the plot, but it is more noticeable than in the prior two plots. After removing outliers, this may be worth revisiting. 
 
 This time, rather than differing locations, I used color to differentiate between divisions in order to see if different divisions responded differently to water temperature. Cyanobacteria seemed to greatly favor warmer water temperatures, so I'm going to remove them from the data and plot all other points to see if there's a trend.
 ```{r no_cyano_temp, echo=F, warning=F}
 phyto %>% 
   filter(DIVISION != 'Cyanobacteria') %>% 
-  ggplot(aes(TEMP,TALLY)) +
+  ggplot(aes(TEMP,`TOTAL BV_um3L`)) +
   geom_point(aes(color=DIVISION)) +
   ggtitle('Tally Response to Temperature') +
   xlab('Temperature (Celsius)') +
@@ -81,11 +126,11 @@ To focus on the two divisions I saw any sort of trend in (Bacillariophyta and Cr
 ```{r three_trends, echo=F, warning=F}
 phyto %>% 
   filter(DIVISION == c('Bacillariophyta','Cryptophyta')) %>% 
-  ggplot(aes(TEMP,TALLY)) +
+  ggplot(aes(TEMP,`TOTAL BV_um3L`)) +
   geom_point() +
   facet_wrap(~DIVISION,nrow=2) +
   geom_smooth(method=lm) +
-  ggtitle('Tally Response to Temperature') +
+  ggtitle('Biomass Response to Temperature') +
   xlab('Temperature (Celsius)') +
   ylab('Tally') +
   theme_gdocs()
@@ -98,7 +143,7 @@ Something that may be worth noting is that the latitude (using Northing as the v
 ```{r latitude_trend, echo=F, warning=F}
 phyto %>% 
   filter(DIVISION != 'Cyanobacteria') %>% 
-  ggplot(aes(NORTHING,TALLY)) +
+  ggplot(aes(NORTHING,`TOTAL BV_um3L`)) +
   geom_point(aes(color=DIVISION)) +
   ggtitle('Tally Response to Northing') +
   xlab('Northing') +

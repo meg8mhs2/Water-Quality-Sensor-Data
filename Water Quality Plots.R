@@ -1,4 +1,4 @@
-#Variable Function
+#Variable Function, which can be used to graph water quality variables over time
 
 library(tidyverse)
 library(dplyr)
@@ -11,7 +11,7 @@ set.seed(2002)
 #ByDay is whether the graph graphs all data points, or the average per day. When ByDay is false,
 #all points will be graphed
 #Month is how the graph is organized. When it is set to false, it will show all the data over
-#all of the years. When it is set to true, it shows all of the data over a calendar year
+#all 4 of the years. When it is set to true, it shows all of the data over a calendar year
 #Measurement is the variable to analyze
 
 
@@ -48,6 +48,7 @@ Water_Quality_Graph<- function(Data_Set_MC= TRUE, ByDay= FALSE, Month= FALSE, Me
     ggtitle("Water Quality Over Time")
 }
 
+#Sample Graphs
 Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='BGAugL')
 Water_Quality_Graph(Data_Set_MC= FALSE, ByDay= TRUE, Month= FALSE, Measurement='BGAugL')
 Water_Quality_Graph(Data_Set_MC= FALSE, Month= TRUE, Measurement='FDOMqsu')
