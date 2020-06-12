@@ -69,10 +69,15 @@ Water_Quality_Graph<- function(Data_Set_MC= TRUE, ByDay= FALSE, Month= FALSE, Me
     VarX=data_WQ$Month
     Name = "Month"
   }
-  ggplot(data= data_WQ, mapping=aes_string(VarX, Measurement)) +
+  plot<-ggplot(data= data_WQ, mapping=aes_string(VarX, Measurement)) +
     geom_point() +
-    xlab(Name) + 
-    ggtitle("Water Quality Over Time")
+    xlab(Name)
+  if(Data_Set_MC== TRUE){
+    plot + ggtitle("Water Quality Over Time in the Main Channel")
+  }
+  else{
+    plot + ggtitle("Water Quality Over Time in the Backwater")
+  }
 }
 ```
 
@@ -209,7 +214,7 @@ August 12-27 (2018)
 
 Smaller peaks:
 July 8-14 (2016)
-July 4-7, July 31- Aug 2 (2017) {First corresponds tolow peak of CHLugL}
+July 4-7, July 31- Aug 2 (2017) {First corresponds to low peak of CHLugL}
 
 Negative:
 Sept 12-Oct 21 (2015)
