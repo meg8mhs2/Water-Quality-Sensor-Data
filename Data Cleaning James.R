@@ -15,3 +15,8 @@ phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
 
 # Cleaning the dates
 phyto$DATE <- phyto$DATE %>% mdy()
+
+# Removing outliers
+## Following the lead of Kireta et al., remove outliers that have values outside
+##    of a 95% C.I. for biomass, density, and water quality measures?
+## Also, which water quality measures are we using here?
