@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggpubr)
 ```
 
 
@@ -75,7 +76,7 @@ storm2 <- temp %>%
 
 # plot for 2016
 storm2 %>% 
-  filter(year(Date) == 2015) %>% 
+  filter(year(Date) == 2017) %>% 
   filter(month(Date) %in% c(6, 7, 8, 9)) %>% 
   ggplot(aes(x = Date, y = daily_discharge)) +
   geom_line() +
@@ -171,5 +172,44 @@ WQ_discharge %>%
   arrange(date) %>% 
   ggplot(aes(x = discharge, y = NO3_mgL, col = site)) +
   geom_path() 
+```
+
+```{r storm event plotting function}
+# given a start date, end date and a variable, creates 3 plots:
+# plot of the discharge between the dates for both sites,
+# plot of the variable between the dates for both sites,
+# concentration-discharge plot between the dates for both sites
+storm_plots <- function(startDate, endDate, var) {
+  par(mfrow=c(3,1))
+  
+  a <- WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes(x = date, y = discharge, col = "site")) +
+    geom_line() 
+
+ b <-  WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes_string(x = "date", y = var, col = "site")) +
+    geom_line() 
+  
+ c <-  WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes_string(x = "discharge", y = var, col = "site")) +
+    geom_path() 
+ 
+ figure <- ggarrange(a, b, c)
+ figure
+}
+
+```
+
+```{r storm plotting examples}
+
+storm_plots("2016-07-13", "2016-08-10", "CHLugL")
+storm_plots("2016-07-13", "2016-08-10", "NO3_mgL")
+
+storm_plots("2017-07-19", "2017-07-25", "CHLugL")
+storm_plots("2017-07-19", "2017-07-25", "NO3_mgL")
+
 ```
 
