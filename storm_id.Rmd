@@ -7,6 +7,8 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(ggpubr)
+library(EcoHydRology)
 ```
 
 
@@ -75,7 +77,7 @@ storm2 <- temp %>%
 
 # plot for 2016
 storm2 %>% 
-  filter(year(Date) == 2015) %>% 
+  filter(year(Date) == 2017) %>% 
   filter(month(Date) %in% c(6, 7, 8, 9)) %>% 
   ggplot(aes(x = Date, y = daily_discharge)) +
   geom_line() +
@@ -84,92 +86,81 @@ storm2 %>%
 
 ```
 
-Below are some examples of concentration-discharge relationships during storm events.
+## Baseflow separation with EcoHydRology package
+
+The EcoHydRology package has a function called BaseflowSeparation(), which uses a low-pass filter technique to estimate how much of the discharge each day is attributed to base flow and how much came from runoff (i.e. from precipitation). This is useful because it could help us to identify storm events -- a high proportion of discharge attributed to runoff indicates a lot of precipitation (potentially a storm event).
+
+```{r baseflow separation}
+## create a dataframe with the baseflow and the quickflow for each day
+baseflowSep <- BaseflowSeparation(discharge$X_00060_00003, filter_parameter = 0.925, passes = 3)
+
+## need a df with just date and discharge for the hydrograph function
+discharge2 <- discharge[,c(3,4)]
+## plot the discharge (black line) and baseflow (red dotted line) over time
+hydrograph(input=discharge2,streamflow2=baseflowSep[,1])
+```
 
 ```{r}
-WQ_discharge %>% 
-  filter(year(date) == 2016)  %>%
-  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
-  ggplot(aes(x = date, y = discharge)) +
-  geom_point() +
-  geom_line()
+baseflowSep %>% 
+  filter(qft < bt/100)
+```
 
-WQ_discharge %>% 
-  filter(year(date) == 2016)  %>%
-  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
-  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
-  geom_line()
+## Concentration-discharge relationships
 
-WQ_discharge %>% 
-  filter(year(date) == 2016)  %>%
-  filter((day(date) > 12 & month(date) == 7) | (day(date) < 11 & month(date) == 8)) %>% 
-  arrange(date) %>% 
-  ggplot(aes(x = discharge, y = NO3_mgL, col = site)) +
-  geom_path() +
-  facet_grid(rows = vars(site), cols = NULL, scales = "free")
+Below, I've defined a function that takes in a start date, end date, and variable name (all as strings) and creates a plot of discharge between the dates, a plot of the variable value between the dates, and a concentration-discharge plot between the dates (all for both sites). For the concentration-discharge plot, I used geom_path() so that the points in discharge-concentration space would be connected in time order. 
+
+```{r storm event plotting function}
+# given a start date, end date and a variable, creates 3 plots:
+# plot of the discharge between the dates for both sites,
+# plot of the variable between the dates for both sites,
+# concentration-discharge plot between the dates for both sites
+storm_plots <- function(startDate, endDate, var) {
+  par(mfrow=c(3,1))
   
+  # plot of discharge over time
+  a <- WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes(x = date, y = discharge, col = "site")) +
+    geom_line() 
+ 
+  # plot of the variable over time
+  b <-  WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes_string(x = "date", y = var, col = "site")) +
+    geom_line() 
+  
+  # concentration-discharge plot
+  c <-  WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    ggplot(aes_string(x = "discharge", y = var, col = "site")) +
+    geom_path() 
+ 
+  # put all 3 plots together
+  figure <- ggarrange(a, b, c)
+  return(figure)
+}
+
 ```
 
-```{r}
-WQ_discharge %>% 
-  filter(year(date) == 2017)  %>%
-  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
-  ggplot(aes(x = date, y = discharge)) +
-  geom_point() +
-  geom_line()
+Here are examples of the plots produced by the storm_plots function for some storm events that I've identified visually. These seem to take a really long time to run and I'm not sure why.
+```{r storm plotting examples}
 
-WQ_discharge %>% 
-  filter(year(date) == 2017)  %>%
-  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
-  ggplot(aes(x = date, y = CHLugL, col = site)) +
-  geom_line()
+storm_plots("2016-07-13", "2016-08-10", "CHLugL")
+storm_plots("2016-07-13", "2016-08-10", "NO3_mgL")
 
-WQ_discharge %>% 
-  filter(year(date) == 2017)  %>%
-  filter((day(date) > 18 & day(date) < 26 & month(date) == 7) ) %>% 
-  arrange(date) %>% 
-  ggplot(aes(x = discharge, y = CHLugL, col = site)) +
-  geom_path() 
+storm_plots("2017-07-19", "2017-07-25", "CHLugL")
+storm_plots("2017-07-19", "2017-07-25", "NO3_mgL")
+
+storm_plots("2015-07-06", "2015-07-28", "CHLugL")
+storm_plots("2015-07-06", "2015-07-28", "NO3_mgL")
+
+storm_plots("2018-06-15", "2018-07-31", "CHLugL")
+storm_plots("2018-06-15", "2018-07-31", "NO3_mgL")
+
 ```
 
-```{r}
-WQ_discharge %>% 
-  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
-  ggplot(aes(x = date, y = discharge)) +
-  geom_point() +
-  geom_line()
 
-WQ_discharge %>% 
-  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
-  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
-  geom_line()
 
-WQ_discharge %>% 
-  filter(year(date) == 2018 & month(date) %in% c(6, 7))  %>%
-  arrange(date) %>% 
-  ggplot(aes(x = discharge, y = CHLugL, col = site)) +
-  geom_path() 
-```
 
-```{r}
-WQ_discharge %>% 
-  filter(year(date) == 2015)  %>%
-  filter((day(date) > 5 & month(date) == 7) ) %>% 
-  ggplot(aes(x = date, y = discharge)) +
-  geom_point() +
-  geom_line()
 
-WQ_discharge %>% 
-  filter(year(date) == 2015)  %>%
-  filter((day(date) > 5 & month(date) == 7) ) %>%
-  ggplot(aes(x = date, y = NO3_mgL, col = site)) +
-  geom_line()
-
-WQ_discharge %>% 
-  filter(year(date) == 2015)  %>%
-  filter((day(date) > 5 & month(date) == 7) ) %>%
-  arrange(date) %>% 
-  ggplot(aes(x = discharge, y = NO3_mgL, col = site)) +
-  geom_path() 
-```
 
