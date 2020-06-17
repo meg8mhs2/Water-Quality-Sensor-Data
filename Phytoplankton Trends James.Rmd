@@ -1,0 +1,190 @@
+---
+title: "Phytoplankton Trends"
+author: "James Pack"
+date: "6/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning = F)
+```
+
+#Intro
+This code is to explore the trends between the phytoplankton abundance/richness and the water quality data from each observation. First step is to read and clean the data that we have been using.
+
+#Data Cleaning
+```{r data_clean}
+# Taken directly from my R script for cleaning this data
+# Phytoplankton Data Cleaning James
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(ggthemes)
+
+phytos_9606 <- read_csv('Phytos_1996-2006.csv')
+phytos_0812 <- read_csv('Phytos_2008-2012.csv')
+phyto_info <- read_csv('Phyto_info_WQdata.csv')
+
+# Combining data from all time periods
+phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
+
+# Adding water quality data, joined by SHEETBAR (ID) of sample
+phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
+
+# Cleaning the dates
+phyto$DATE <- phyto$DATE %>% mdy()
+```
+
+#Exploring Individual Trends
+This section is meant to examine the variations in different variables. It will be split into two subsections to make more sense later. Ideally, this section will help to decide which environmental factors are used in later models.
+
+##Phytoplankton
+First, exploring the biovolume trends.
+
+```{r biovolume}
+phyto %>% ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Biovolume Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+This shows that Bacillariophyta are considerably more numerous than other divisions. Viewing those separately, we are given two plots. First, just the Bacillariophyta:
+
+```{r bv_bac}
+phyto %>% filter(DIVISION=='Bacillariophyta') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(alpha=.25) +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Biovolume of Bacillariophyta Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+This allows us to better view the change over time. It seems that there was an increase in Bacillariophyta biovolume at field stations 1, 2, 3, 4, and 5 in the late 2000s. Station 6 is less clear. However, it seems that the majority of observations were considerably lower, meaning these outliers might be very interesting.
+
+Secondly, though, is a plot of all divisions except the Bacillariophyta:
+
+```{r bv_no_bac}
+phyto %>% filter(DIVISION !='Bacillariophyta') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Biovolume Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+This plot reveals that after removing Bacillariophyta, the majority of observations have remained in a fairly narrow range, with only a few observations of Cyanobacteria having biovolume values above 5 (billion). Much like I did with Bacillariophyta, I'm now going to move the Cyanobacteria observations to their own plot.
+
+```{r bv_cyan}
+phyto %>% filter(DIVISION =='Cyanobacteria') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(alpha=.25) +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Biovolume of Cyanobacteria Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+This time, there only seemed to be an increase in stations 1 and 3, and even then it seems these are more outliers than they were typical. The changes so far in stations 1 and 3 make them interesting for future exploration.
+
+Just like last time, plotting the remaining divisions to see if any other group stands out.
+
+```{r bv_no_cyan_bac}
+phyto %>% filter(DIVISION !='Bacillariophyta') %>% 
+  filter(DIVISION != 'Cyanobacteria') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(aes(color=DIVISION)) +
+  ggtitle('Biovolume Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+Here, I see that Pyrrophyta and Cryptophyta have increased, especially in the final few years between 2010 and 2015. I will now isolate each of those divisions like I did for Cyanobacteria and Bacillariophyta.
+
+```{r bv_pyrr}
+phyto %>% filter(DIVISION=='Pyrrophyta') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(alpha=.5) +
+  ggtitle('Biovolume of Pyrrophyta Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+For Pyrrophyta, the scarcity of observations makes it difficult to read the plots of separate stations, as station 4 doesn't even show because it had no observations of Pyrrophyta over the entire 1996-2012 span. Even with all field stations together, there were very few observations and will need to be treated differently than Bacillariophyta, for example.
+
+Now for Cryptophyta:
+
+```{r bv_cryp}
+phyto %>% filter(DIVISION=='Cryptophyta') %>% 
+  ggplot(aes(DATE,`TOTAL BV_um3L`/1e09)) +
+  geom_point(alpha=.25) +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Biovolume of Cryptophyta Over Time') +
+  xlab('Date') +
+  ylab('Total Biovolume (in billions)') +
+  theme_gdocs()
+```
+
+Cryptophyta, interestingly, seem to have increased across all field stations except station 5, but the darkened circles still mean that observations were more frequent than they were with Pyrrophyta. Station 1 also experienced some sort of growth. Depending on water quality trends & results of future analysis, it may be worthwhile figuring out what makes station 1 stand out from the other stations this consistently. 
+
+##Water Quality
+In addition to the phytoplankton, it will be interesting to see the trends in water quality over time. Things that change around the 2008-2009 mark will be especially interesting, as that seems to be when Bacillariophyta, Cyanobacteria, and Cryptophyta had their changes in their data (especially Station 1). 
+
+First, an examination of the total nitrogen.
+
+```{r total_n}
+phyto %>% ggplot(aes(DATE,TN)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Total Nitrogen Over Time') +
+  xlab('Date') +
+  ylab('Total Nitrogen') +
+  theme_gdocs()
+```
+
+It seems that nitrogen generally decreased except at stations 1 and 6. Even the decreases were not dramatic (visually), so I'll be interested if other water quality indicators might be more interesting.
+
+```{r total_p}
+phyto %>% ggplot(aes(DATE,TP)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Total Phosphorous Over Time') +
+  xlab('Date') +
+  ylab('Total Phosphorous') +
+  theme_gdocs()
+```
+
+Interestingly, stations 5 and 6 experienced more phosphorous than the other stations. Also, station 6 experienced an increase towards the end while stations 3 and 5 seemed to have more of a downward trend. 
+
+```{r total_susp}
+phyto %>% ggplot(aes(DATE,SS)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  ggtitle('Total Suspended Solids Over Time') +
+  xlab('Date') +
+  ylab('Total Suspended Solids') +
+  theme_gdocs()
+```
+
+Station 5 experienced far higher suspended solid observations than the other stations. Otherwise, there doesn't seem to be a trend, but this is something to keep in mind. 
+
+#Clustering
+Because I've seen several different water quality metrics used (and will be adding more as I go), it will be interesting to see how clustering by each metric works. I will likely do clustering using different combinations of factors and see what happens.
+
+
+Compare north/south water quality & abundance
+Look more at richness (# of species)
+Look at diversity (index of number of species & abundance of species)
+Look at water type (impounded) differences in quality
+Turn "cannot meet tally" into a flag
+Get discharge data from KJ to compare
+Develop filter for faulty equipment
+Clustering to see: are pools all the same, are they changing over time, etc.
+Pick out temp, light, turbidity, n, p, si, veg density,

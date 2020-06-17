@@ -1,0 +1,143 @@
+---
+title: "Phytoplankton Richness Trends James"
+author: "James Pack"
+date: "6/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=F, warning=F}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+My other document I was only exploring the trends in abundance (biovolume), but in this document I plan on exploring the richness (number of species) instead. I felt that doing a separate document will allow for things to be a bit more readable.
+
+```{r data_cleaning}
+# Phytoplankton Data Cleaning James
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+
+phytos_9606 <- read_csv('Phytos_1996-2006.csv')
+phytos_0812 <- read_csv('Phytos_2008-2012.csv')
+phyto_info <- read_csv('Phyto_info_WQdata.csv')
+
+# Combining data from all time periods
+phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
+
+# Adding water quality data, joined by SHEETBAR (ID) of sample
+phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
+
+# Cleaning the dates
+phyto$DATE <- phyto$DATE %>% mdy()
+```
+
+# Calculating Richness
+
+Unlike abundance, richness isn't directly measured in the data. It will instead need to be calculated for each date observations were made. Taryn suggested before to count each unique SHEETBAR variable.
+
+```{r richness}
+phyto %>% count(SHEETBAR)
+```
+
+Now that I know what this gives me, time to assign the values to a row
+
+```{r richness}
+phyto_rich <- left_join(phyto,phyto %>% count(SHEETBAR),by='SHEETBAR') %>% 
+  rename(richness=n)
+phyto_rich$richness
+```
+
+Now that that's calculated, time to check it out over time.
+
+# Plotting Richness
+
+```{r plot1}
+library(ggthemes)
+phyto_rich %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,richness)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=2) +
+  geom_smooth(method=lm) +
+  ggtitle('Richness Over Time at Each Field Station') +
+  xlab('Date') +
+  ylab('# of Genera observed') +
+  theme_gdocs()
+```
+
+After looking at this, it is very unclear if there were any trends over time with richness at any of the field stations. It is noticeable that stations 4, 5, and 6 all experienced times with fewer than 10 genera, while stations 1, 2, and 3 saw their lowest points at 10. Figuring out differing conditions between stations 1 and 6, for example, might explain why so many species died off at station 6 just before the end of data collection.
+
+Adding smooth lines also shows that while the first three stations appear to have higher values, they have a negative trend, while the other three stations are either neutral (4) or increasing (5,6). 
+
+# Richness and Water Quality
+```{r plot2}
+phyto_rich %>% filter(is.na(richness) == F) %>% 
+  filter(is.na(TN) == F) %>% 
+  ggplot(aes(TN,richness)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Richness vs. Total Nitrogen') +
+  xlab('Total Nitrogen') +
+  ylab('Richness') +
+  theme_gdocs()
+```
+
+Relatively weak trend there.
+
+```{r plot3}
+phyto_rich %>% filter(is.na(richness) == F) %>% 
+  filter(is.na(TP) == F) %>% 
+  ggplot(aes(TP,richness)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Richness vs. Total Phosphorous') +
+  xlab('Total Phosphorous') +
+  ylab('Richness') +
+  theme_gdocs()
+```
+
+Phosphorous has a much more pronounced trend, and while it does widen at the extreme values of total phosphorous observed, it still seems to be a downward trend in richness as phosphorous increases. 
+
+```{r plot4}
+phyto_rich %>% filter(is.na(richness) == F) %>% 
+  filter(is.na(SS) == F) %>% 
+  ggplot(aes(SS,richness)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Richness vs. Suspended Solids') +
+  xlab('Total Suspended Solids') +
+  ylab('Richness') +
+  theme_gdocs()
+```
+
+Similar to the total phosphorous graphic in that it is a more pronounced trend, suspended solids had more extreme values included that may actually soften the trend. All observations of suspended values greater than 250 (ish) are actually above the line, while the rest of values seem to have a sharper trend. Recreating the same plot without these extreme values:
+
+```{r plot5}
+phyto_rich %>% filter(is.na(richness) == F) %>% 
+  filter(is.na(SS) == F) %>% 
+  filter(SS < 250) %>% 
+  ggplot(aes(SS,richness)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Richness vs. Suspended Solids') +
+  xlab('Total Suspended Solids') +
+  ylab('Richness') +
+  theme_gdocs()
+```
+
+The trend seems to have roughly the same slope, so it may be unimportant to remove those extreme values. Doing a multiple regression analysis using suspended solids and phosphorous we get:
+
+```{r regression1}
+model <- lm(data=phyto_rich,richness~SS + TP)
+summary(model)
+```
+
+Although it is a low R squared, all three coefficients were considered significant at the .001 level. Quickly double checking suspended solids and total phosphorous are not too co-linear (R < .2 from a paper I read):
+
+```{r colinear1}
+test <- lm(data=phyto_rich,SS~TP)
+sqrt(summary(test)$r.squared)
+```
+
+Unfortunately, the two variables are too heavily correlated (for my understanding now) to be used together reliably in regression.
