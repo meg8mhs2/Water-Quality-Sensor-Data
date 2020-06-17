@@ -1,0 +1,27 @@
+library(cluster)
+#TN=Total Nitrogen
+#TP=Total phosphorus
+
+#Removed NAs and selected numeric columns
+phyto_clust<-select(phyto,DIVISION,DATE,TN, TP) %>% 
+  na.omit()
+phyto_clust
+
+#Determining the Euclidean distance
+phyto_clust.dist<-dist(scale(phyto_clust[,-c(1,2)]))
+
+#Complete Linkage
+phyto_clust.complete.link<-hclust(phyto_clust.dist,method='complete')
+plot(phyto_clust.complete.link, label=phyto_clust$DIVISION)
+
+#Cutting the dendogram to form k=3 clusters
+cut.3<-cutree(phyto_clust.complete.link,k=3)
+cut.3 #prints the clusters
+phyto.3.clust<-lapply(1:3, function(nc) phyto_clust$DIVISION[cut.3==nc])
+phyto.3.clust #prints clusters in terms of Divisions
+
+#Printing a scatter plot matrix to vizualize the clusters
+pairs(phyto_clust[-c(1,2)],panel=function(x,y) text(x,y,cut.3))
+
+#This did not really cluster how I wanted it to, but it is a start in trying to see a pattern in nitrogen and phosphorus in the specified divisions
+

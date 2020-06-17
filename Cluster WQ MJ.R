@@ -33,9 +33,9 @@ data_Discharge <- data_discharge_raw %>%
   select(Date, Discharge)
 
 #Join the data
-Joint_Data_MC<-left_join(data_MC_day, data_Discharge, by=c("Date_MC"="Date")) %>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL))
+Joint_Data_MC<-left_join(data_MC_day, data_Discharge, by=c("Date_MC"="Date")) %>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL), !is.na(Discharge))
 summary(Joint_Data_MC)
-Joint_Data_SI<-left_join(data_SI_day, data_Discharge, by=c("Date_SI"="Date"))
+Joint_Data_SI<-left_join(data_SI_day, data_Discharge, by=c("Date_SI"="Date"))  %>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL), !is.na(Discharge))
 
 #Cluster
 MC.scaled <- scale(Joint_Data_MC[-c(1)])
@@ -71,7 +71,67 @@ for (i in 2:7){
 #Join the data with the groups now
 Joint_Data <- Joint_Data_MC %>% mutate(Cluster= MC.k8$cluster)
 
-#You can see 5 has high discharge and mid nitrate, 2 has high nitrate andmid discharge, 4, 8, 3 have low discharge and nitrate
+
+time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2016)
+mean(time_joint_data$Discharge) #5500
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date_MC, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Very low levels (July)
+#2: Low levels
+#3: Lower peaks and points between large peaks
+#5: Fast rising
+#8: Top peaks
+
+time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2017)
+mean(time_joint_data$Discharge) #40537
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date_MC, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Mid between top peak and trough
+#2: Mid levels
+#3: Lower peaks and points between large peaks
+#5: Trough
+#8: Top peaks
+
+
+#Note there is a large gap in late October 
+
+time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2018)
+mean(time_joint_data$Discharge) #56078
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date_MC, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Troughs
+#3: Lower peaks and points between large peaks
+#5: Nearing troughs
+#8: Top peaks
+
+time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2015)
+mean(time_joint_data$Discharge) #28307
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date_MC, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Decreasing
+#2: Peak
+#4: Dec and low (Oct)
+#7: Mid levels and peaks (Sept)
+
+?geom_line
+Time_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= yday(Date_MC), y=Discharge, group= as.character(year(Date_MC)))) +
+  geom_line() +
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Low discharge, high CHL, BGA
+#2: Higher averages, after peaks, high nitrate
+#3: Smaller peaks (smaller storms). Average nitrate
+#4: Low discharge, BGA
+#5: Average, low discharge
+#6: High turbidity
+#7: Low and same time/year, low nitrate and FDOM
+#8: Peaks
+
+#You can see 5 has high discharge and mid nitrate, 2 has high nitrate and mid discharge, 4, 8, 3 have low discharge and nitrate
 Nitrate_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=NO3_mgL))+
   geom_point(mapping=aes(color= as.character(Cluster)))
 Nitrate_Discharge
@@ -81,7 +141,7 @@ BGA_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=BGAugL))+
   geom_point(mapping=aes(color= as.character(Cluster)))
 BGA_Discharge
 
-#5 is high discharge , 4 is 2016 and low discharge, 3 is low discharge, 2 is early 2017
+#5 is high discharge, 4 is 2016 and low discharge, 3 is low discharge, 2 is early 2017
 Time_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Date_MC, y=Discharge))+
   geom_point(mapping=aes(color= as.character(Cluster)))
 Time_Discharge
@@ -100,3 +160,7 @@ FDOM_Discharge
 CHL_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=CHLugL))+
   geom_point(mapping=aes(color= as.character(Cluster)))
 CHL_Discharge
+
+?write.csv
+write.csv(Joint_Data, file="C:ClusteredDataMC.csv", row.names = FALSE)
+
