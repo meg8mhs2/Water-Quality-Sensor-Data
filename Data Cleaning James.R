@@ -14,7 +14,7 @@ phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
 phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
 
 # Cleaning the dates
-phyto$DATE <- phyto$DATE %>% mdy()
+phyto <- phyto %>% mutate(DATE=mdy(DATE))
 
 # Removing outliers
 ## Following the lead of Kireta et al., remove outliers that have values outside
