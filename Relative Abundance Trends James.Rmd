@@ -105,18 +105,20 @@ The same problem as before emerges, where more extreme values may be affecting t
 
 Because increases in Cyanobacteria populations can cause harmful algal blooms, it may be important to see if the relative abundance of Cyanobacteria positively or negatively affects the richness and total abundance of the larger phytoplankton population. 
 
-```{r rel_cyan_abund}
+```{r cyan_abund}
 rel_cyan <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
   group_by(SHEETBAR) %>% 
-  summarize(rel_cyan_abund = sum(`TOTAL BV_um3L`))
+  summarize(cyan_abund = sum(`TOTAL BV_um3L`))
 phyto <- left_join(phyto,rel_cyan,by='SHEETBAR')
-head(phyto$rel_cyan_abund)
+head(phyto$cyan_abund)
 ```
 
 It appears that the join has worked for all but a few observations (175 observations of cyanobacteria abundance vs. 181 observations of total abundance). Now to plot this and see how it compares to total abundance and richness of communities.
 
+## Getting a feel for Cyanobacteria
+
 ```{r rel_cyan}
-phyto %>% ggplot(aes(DATE,rel_cyan_abund/1e9)) +
+phyto %>% ggplot(aes(DATE,cyan_abund/1e9)) +
   geom_point() +
   geom_smooth(method=lm) +
   ggtitle('Cyanobacteria Abundance Over Time') +
@@ -127,8 +129,10 @@ phyto %>% ggplot(aes(DATE,rel_cyan_abund/1e9)) +
 
 Interestingly, while there have been spikes of large masses of cyanobacteria, this does not seem to be the case more generally. In fact, despite the number of high values, the biovolume of cyanobacteria has decreased over time. 
 
-```{r rel_cyan_tot_abund}
-phyto %>% ggplot(aes(rel_cyan_abund/1e9,total_abundance/1e9)) +
+## Cyanobacteria and the phytoplankton community
+
+```{r cyan_tot_abund}
+phyto %>% ggplot(aes(cyan_abund/1e9,total_abundance/1e9)) +
   geom_point() +
   geom_smooth(method=lm) +
   ggtitle('Total Abundance vs. Cyanobacteria Abundance') +
@@ -139,8 +143,8 @@ phyto %>% ggplot(aes(rel_cyan_abund/1e9,total_abundance/1e9)) +
 
 While there's not a definitive trend downwards as I expected, it does seem that the observations with the highest total biovolume tended to have little to no Cyanobacteria observed, while observations with high Cyanobacteria biovolume were more limited in their total biovolume. This makes sense, as there would necessarily be some sort of positive trend unless Cyanobacteria were killing other species at the same rate they reproduced or faster. Next, comparing it to richness might show some of the negative effects Cyanobacteria have.
 
-```{r rel_cyan_rich}
-phyto %>% ggplot(aes(rel_cyan_abund/1e9,rich)) +
+```{r cyan_rich}
+phyto %>% ggplot(aes(cyan_abund/1e9,rich)) +
   geom_point() +
   geom_smooth(method=lm) +
   ggtitle('Richness vs. Cyanobacteria Abundance') +
@@ -151,8 +155,8 @@ phyto %>% ggplot(aes(rel_cyan_abund/1e9,rich)) +
 
 Interestingly, there is another positive trend here. It seems that Cyanobacteria have not had the clear trends I expected of them, and some more careful analysis is needed. It may interesting to separately study quartiles of the Cyanobacteria (i.e. study the observations with the highest Cyanobacteria biovolume, lowest, and middle quarters). I'm also going to consider the % of total biovolume that is Cyanobacteria compared to abundance to see if the above graphic changes.
 
-```{r rel_cyan_rich}
-phyto %>% ggplot(aes(rel_cyan_abund/total_abundance*100,rich)) +
+```{r cyan_rich2}
+phyto %>% ggplot(aes(cyan_abund/total_abundance*100,rich)) +
   geom_point() +
   geom_smooth(method=lm) +
   ggtitle('Richness vs. Cyanobacteria Abundance') +
@@ -163,11 +167,67 @@ phyto %>% ggplot(aes(rel_cyan_abund/total_abundance*100,rich)) +
 
 Despite the points seeming to have a more generally negative trend, the line drawn by ggplot was still slightly positive. By eye, it seems that is flatter than the previous plot, so this may be closer to understanding the negative effects Cyanobacteria may have. Exploring quartiles is likely the next step. 
 
+## Location specific Cyanobacteria and phytoplankton communities
+
+It may be worth examining more closely the growth of Cyanobacteria at each field station & the impact on local phytoplankton, as more clear patterns may emerge there.
+
+```{r cyan_loc}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(FLDNUM,cyan_abund/1e9)) +
+  geom_point() +
+  ggtitle('Cyanobacteria Abundance') +
+  xlab('Field Number') +
+  ylab('Cyanobacteria Biovolume') +
+  theme_gdocs()
+```
+
+Maybe unsurprisingly, each location had its peak at a different point of time, if at all. Stations 1, 2, and 3 all had relatively high peaks between 6 and 8 billion, while stations 4, 5, and 6 never passed 3 billion. Focusing on stations with more change (1,2,3) may give more insights as to what allows Cyanobacteria to thrive, while stations with less change (4,5,6) may give more insight as to what inhibits or doesn't allow the growth of Cyanobacteria. It's also important to keep in mind that while stations 1, 2, and 3 did all have high points in Cyanobacteria biovolume, these observations seem to be outliers.
+
+```{r cyan_spikes}
+high_cyan <- phyto %>% filter(FLDNUM %in% c(1,2,3))
+high_cyan %>% ggplot(aes(cyan_abund/1e9,total_abundance/1e9)) +
+  geom_point() +
+  geom_smooth(method=lm)
+high_cyan %>% 
+  ggplot(aes(cyan_abund/total_abundance * 100,total_abundance/1e9)) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+
+The first graphic didn't feel quite right, so I made the second to see if the proportion of cyanobacteria to other phytoplankton was more impactful. The second graphic seems to show closer to what I expected to see based on the reading done. As the relative abundance of cyanobacteria increases (cyanobacteria biovolume/total biolume), the total abundance tends to fall at field stations that experienced more variation. Now to see if the same holds true for richness.
+
+```{r cyan_spikes2}
+high_cyan %>% ggplot(aes(cyan_abund/1e9,rich)) +
+  geom_point() +
+  geom_smooth(method=lm)
+high_cyan %>% 
+  ggplot(aes(cyan_abund/total_abundance * 100,rich)) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+
+Unlike with total abundance, richness did not show a clear negative response to an increased proportion of cyanobacteria in the total biovolume measured. However, it is notable that for observations where cyanobacteria make up over 50% of the phytoplankton community, the observed measure of richness was lower than the predicted richness by the line of best fit. 
+
+Below, I've included plots of all the field stations comparing the relative cyanobacteria abundance (cyanobacteria biovolume/total biovolume) with the richness and abundance. This will likely result in less clear trends, as stations 4, 5, and 6 experienced fewer spikes in cyanobacteria populations (as mentioned earlier).
+
+```{r}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(cyan_abund/total_abundance*100,total_abundance/1e9)) +
+  geom_point() +
+  geom_smooth(method=lm)
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(cyan_abund/total_abundance*100,rich)) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+
+Interestingly, only the comparison with richness showed another positive trend. It seems that while a larger proportion of cyanobacteria might reduce the overall size of phytoplankton communities, it does not in the same way reduce the richness of the community. Comparing the effect of Cyanobacteria on other taxa would be another good step in understanding the impact. 
+
 # Cyanobacteria & Nutrients
 After seeing the article Kathi Jo sent us (6/17), I wanted to test the relationship of Cyanobacteria abundance and various nutrients in the water (especially phosphorous, as mentioned in the article). 
 
 ```{r cyan_phos}
-phyto %>% ggplot(aes(TP,rel_cyan_abund/1e9)) +
+phyto %>% ggplot(aes(TP,cyan_abund/1e9)) +
   geom_point() + 
   geom_smooth(method=lm) +
   ggtitle('Total Phosphorous and Cyanobacteria Abundance') +
@@ -179,7 +239,7 @@ phyto %>% ggplot(aes(TP,rel_cyan_abund/1e9)) +
 Interestingly, this also does not reveal the shape I expected. However, the low Cyanobacteria biovolume observations with higher total phosphorous may be due to lower overall biovolume. This time, I will instead use the percentage of total biovolume made up by cyanobacteria against the total phosphorous available.
 
 ```{r cyan_phos2}
-phyto %>% ggplot(aes(TP,rel_cyan_abund/total_abundance * 100)) +
+phyto %>% ggplot(aes(TP,cyan_abund/total_abundance * 100)) +
   geom_point() + 
   geom_smooth(method=lm) +
   ggtitle('Total Phosphorous and % Cyanobacteria Abundance') +
@@ -188,4 +248,28 @@ phyto %>% ggplot(aes(TP,rel_cyan_abund/total_abundance * 100)) +
   theme_gdocs()
 ```
 
+Just for thoroughness, next investigating Cyanobacteria and Nitrogen.
 
+```{r cyan_nit}
+phyto %>% ggplot(aes(TN,cyan_abund/1e9)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Total Nitrogen and Cyanobacteria Abundance') +
+  xlab('Total Nitrogen') +
+  ylab('Cyanobacteria Biovolume') +
+  theme_gdocs()
+```
+
+And again, with relative Cyanobacteria Abundance.
+
+```{r cyan_nit2}
+phyto %>% ggplot(aes(TN,cyan_abund/total_abundance * 100)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Total Nitrogen and Cyanobacteria Relative Abundance') +
+  xlab('Total Nitrogen') +
+  ylab('% Cyanobacteria of Biovolume') +
+  theme_gdocs()
+```
+
+Neither of these plots indicate a strong relationship between the abundance of Cyanobacteria and nutrients available. This doesn't mean necessarily that there is no relationship, but as of now I am not seeing a clear trend.
