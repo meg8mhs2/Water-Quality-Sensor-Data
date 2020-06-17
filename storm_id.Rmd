@@ -77,8 +77,8 @@ storm2 <- temp %>%
 
 # plot for 2016
 storm2 %>% 
-  filter(year(Date) == 2017) %>% 
-  filter(month(Date) %in% c(6, 7, 8, 9)) %>% 
+  filter(year(Date) == 2016) %>% 
+  filter(month(Date) %in% c(6, 7, 8, 9, 10)) %>% 
   ggplot(aes(x = Date, y = daily_discharge)) +
   geom_line() +
   geom_point(aes(x = Date, y = daily_discharge, col = status))  
@@ -98,6 +98,54 @@ baseflowSep <- BaseflowSeparation(discharge$X_00060_00003, filter_parameter = 0.
 discharge2 <- discharge[,c(3,4)]
 ## plot the discharge (black line) and baseflow (red dotted line) over time
 hydrograph(input=discharge2,streamflow2=baseflowSep[,1])
+
+
+## plot for just 2018
+discharge_2018 <- discharge %>% 
+  filter(Date >= ymd("2018-06-01")) %>% 
+  select(c(3,4))
+
+baseflowSep_2018 <- BaseflowSeparation(discharge_2018$X_00060_00003,
+                                       filter_parameter = 0.925, passes = 3)
+
+hydro_2018 <- hydrograph(input = discharge_2018, streamflow2 = baseflowSep_2018[,1])
+
+## plot for just 2017
+discharge_2017 <- discharge %>% 
+  filter(Date >= ymd("2017-06-01") & Date <= ymd("2017-10-30")) %>% 
+  select(c(3,4))
+
+baseflowSep_2017 <- BaseflowSeparation(discharge_2017$X_00060_00003,
+                                       filter_parameter = 0.925, passes = 3)
+
+hydro_2017 <- hydrograph(input = discharge_2017, streamflow2 = baseflowSep_2017[,1])
+
+## plot for just 2016
+discharge_2016 <- discharge %>% 
+  filter(Date >= ymd("2016-06-01") & Date <= ymd("2016-10-30")) %>% 
+  select(c(3,4))
+
+baseflowSep_2016 <- BaseflowSeparation(discharge_2016$X_00060_00003,
+                                       filter_parameter = 0.925, passes = 3)
+
+hydro_2016 <- hydrograph(input = discharge_2016, streamflow2 = baseflowSep_2016[,1])
+
+## plot for just 2015
+discharge_2015 <- discharge %>% 
+  filter(Date >= ymd("2015-06-01") & Date <= ymd("2015-10-30")) %>% 
+  select(c(3,4))
+
+baseflowSep_2015 <- BaseflowSeparation(discharge_2015$X_00060_00003,
+                                       filter_parameter = 0.925, passes = 3)
+
+hydro_2015 <- hydrograph(input = discharge_2015, streamflow2 = baseflowSep_2015[,1])
+
+## all four years together
+par(mfrow = c(2, 2))
+hydrograph(input = discharge_2015, streamflow2 = baseflowSep_2015[,1])
+hydrograph(input = discharge_2016, streamflow2 = baseflowSep_2016[,1])
+hydrograph(input = discharge_2017, streamflow2 = baseflowSep_2017[,1])
+hydrograph(input = discharge_2018, streamflow2 = baseflowSep_2018[,1])
 ```
 
 ```{r}
@@ -114,30 +162,55 @@ Below, I've defined a function that takes in a start date, end date, and variabl
 # plot of the discharge between the dates for both sites,
 # plot of the variable between the dates for both sites,
 # concentration-discharge plot between the dates for both sites
-storm_plots <- function(startDate, endDate, var) {
+storm_plots <- function(startDate, endDate, var, all_plots = F) {
   par(mfrow=c(3,1))
   
-  # plot of discharge over time
-  a <- WQ_discharge %>% 
-    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
-    ggplot(aes(x = date, y = discharge, col = "site")) +
-    geom_line() 
- 
-  # plot of the variable over time
-  b <-  WQ_discharge %>% 
-    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
-    ggplot(aes_string(x = "date", y = var, col = "site")) +
-    geom_line() 
+  subset <- WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate))
   
-  # concentration-discharge plot
-  c <-  WQ_discharge %>% 
-    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+  if(all_plots){
+    # plot of discharge over time
+    a <- subset %>%  
+      ggplot(aes(x = date, y = discharge, col = "site")) +
+      geom_line() 
+  
+    # plot of the variable over time
+    b <-  subset %>%  
+      ggplot(aes_string(x = "date", y = var, col = "site")) +
+      geom_line() 
+    
+    # concentration-discharge plot
+    c <-  subset %>%  
     ggplot(aes_string(x = "discharge", y = var, col = "site")) +
     geom_path() 
- 
-  # put all 3 plots together
-  figure <- ggarrange(a, b, c)
-  return(figure)
+    
+     # put all 3 plots together
+  
+    figure <- ggarrange(a, b, c)
+    return(figure)
+    
+  } else {
+  
+    # concentration-discharge plot
+    c <-  subset %>%  
+      ggplot(aes_string(x = "discharge", y = var)) +
+      geom_path() +
+      facet_wrap(~site, scales = "free") +
+      # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("discharge", y = var), col = "red") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("discharge", y = var), col = "red") +
+      # end points
+      geom_point(data = subset[subset$site == "MC",][nrow(subset[subset$site == "MC",]),], 
+                aes_string("discharge", y = var), col = "blue") +
+      geom_point(data = subset[subset$site == "SI",][nrow(subset[subset$site == "SI",]),], 
+                aes_string("discharge", y = var), col = "blue")
+    
+    
+    return(c)
+  }
+  
 }
 
 ```
@@ -145,20 +218,149 @@ storm_plots <- function(startDate, endDate, var) {
 Here are examples of the plots produced by the storm_plots function for some storm events that I've identified visually. These seem to take a really long time to run and I'm not sure why.
 ```{r storm plotting examples}
 
-storm_plots("2016-07-13", "2016-08-10", "CHLugL")
-storm_plots("2016-07-13", "2016-08-10", "NO3_mgL")
+#storm_plots("2016-07-13", "2016-08-10", "CHLugL")
+#storm_plots("2016-07-13", "2016-08-10", "NO3_mgL")
+storm_plots("2016-07-13", "2016-08-10", "Turb")
 
-storm_plots("2017-07-19", "2017-07-25", "CHLugL")
-storm_plots("2017-07-19", "2017-07-25", "NO3_mgL")
+#storm_plots("2017-07-19", "2017-07-25", "CHLugL")
+#storm_plots("2017-07-19", "2017-07-25", "NO3_mgL")
+storm_plots("2017-07-19", "2017-07-25", "Turb")
 
-storm_plots("2015-07-06", "2015-07-28", "CHLugL")
-storm_plots("2015-07-06", "2015-07-28", "NO3_mgL")
+#storm_plots("2015-07-06", "2015-07-28", "CHLugL")
+#storm_plots("2015-07-06", "2015-07-28", "NO3_mgL")
+storm_plots("2015-07-06", "2015-07-28", "Turb")
 
-storm_plots("2018-06-15", "2018-07-31", "CHLugL")
-storm_plots("2018-06-15", "2018-07-31", "NO3_mgL")
+#storm_plots("2018-06-15", "2018-07-31", "CHLugL")
+#storm_plots("2018-06-15", "2018-07-31", "NO3_mgL")
+storm_plots("2018-06-15", "2018-07-31", "Turb")
 
+
+storm_plots("2016-06-01", "2016-06-14", "Turb")
+storm_plots("2016-09-06", "2016-09-20", "Turb", all_plots = T)
+storm_plots("2016-09-06", "2016-09-20", "Turb")
 ```
 
+Below is a function for plotting concentration-discharge relationships during storm events (or any time) of multiple different constituents. You can specify up to 4 variables to look at (must give at least one), as well as start and end dates. You can also optionally specify which site to plot (otherwise, both will be plotted in the same graph). 
+
+```{r multi variable C-Q plotting function}
+# plots C-Q relationships for up to 4 variables
+# specify start date and end date
+# optionally specify which site to plot (otherwise, both will be included in each plot)
+multi_var_CQ <- function (var1, var2 = NA, var3 = NA, var4 = NA, startDate, endDate, site1 = NA){
+  # subset the data between the given start and end dates
+  subset <- WQ_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate))
+  # subset to the given site if it's provided
+  if(!is.na(site1)){
+    subset <- subset %>% 
+      filter(site == site1)
+  }
+  
+  # plot the first variable
+  a <-  subset %>%  
+    ggplot(aes_string(x = "discharge", y = var1, 
+                      col = case_when(!is.na(site1) ~ "NULL", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("discharge", y = var1), col = "red") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("discharge", y = var1), col = "red") +
+      # end points
+      geom_point(data = subset[subset$site == "MC",][nrow(subset[subset$site == "MC",]),], 
+                aes_string("discharge", y = var1), col = "blue") +
+      geom_point(data = subset[subset$site == "SI",][nrow(subset[subset$site == "SI",]),], 
+                aes_string("discharge", y = var1), col = "blue")
+  
+  figure <- a
+  
+  # plot the second variable if it's given
+  if(!is.na(var2)){
+    b <-  subset %>%  
+    ggplot(aes_string(x = "discharge", y = var2, 
+                      col = case_when(!is.na(site1) ~ "NULL", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("discharge", y = var2), col = "red") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("discharge", y = var2), col = "red") +
+      # end points
+      geom_point(data = subset[subset$site == "MC",][nrow(subset[subset$site == "MC",]),], 
+                aes_string("discharge", y = var2), col = "blue") +
+      geom_point(data = subset[subset$site == "SI",][nrow(subset[subset$site == "SI",]),], 
+                aes_string("discharge", y = var2), col = "blue")
+    
+    figure <- ggarrange(a, b)
+  }
+  
+  # plot the third variable if it's given
+  if(!is.na(var3)){
+    c <-  subset %>%  
+    ggplot(aes_string(x = "discharge", y = var3, 
+                      col = case_when(!is.na(site1) ~ "NULL", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("discharge", y = var3), col = "red") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("discharge", y = var3), col = "red") +
+      # end points
+      geom_point(data = subset[subset$site == "MC",][nrow(subset[subset$site == "MC",]),], 
+                aes_string("discharge", y = var3), col = "blue") +
+      geom_point(data = subset[subset$site == "SI",][nrow(subset[subset$site == "SI",]),], 
+                aes_string("discharge", y = var3), col = "blue")
+    
+    figure <- ggarrange(a, b, c)
+  }
+  
+  # plot the fourth variable if it's given
+  if(!is.na(var4)){
+    d <-  subset %>%  
+    ggplot(aes_string(x = "discharge", y = var4, 
+                      col = case_when(!is.na(site1) ~ "NULL", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("discharge", y = var4), col = "red") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("discharge", y = var4), col = "red") +
+      # end points
+      geom_point(data = subset[subset$site == "MC",][nrow(subset[subset$site == "MC",]),], 
+                aes_string("discharge", y = var4), col = "blue") +
+      geom_point(data = subset[subset$site == "SI",][nrow(subset[subset$site == "SI",]),], 
+                aes_string("discharge", y = var4), col = "blue")
+    
+    figure <- ggarrange(a, b, c, d)
+  }
+  # show the figure
+  figure
+}
+```
+
+Here are some examples of how we can use the multi-variable C-Q plotting function to compare the C-Q relationships for turbulence, nitrate, chlorophyll, and blue-green algae:
+```{r examples}
+## C-Q plots for a storm, just MC site
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2016-07-13", "2016-08-10", site1 = "MC")
+## C-Q plots for the same storm, just SI site
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2016-07-13", "2016-08-10", site1 = "SI")
+## C-Q plots for the same storm, both sites
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2016-07-13", "2016-08-10")
+
+
+## C-Q plots for some other storms, just MC site
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2017-07-19", "2017-07-25", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2015-07-06", "2015-07-28", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "BGAugL",
+             "2018-06-15", "2018-07-31", site1 = "MC")
+
+
+```
 
 
 
