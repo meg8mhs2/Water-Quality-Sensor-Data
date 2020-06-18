@@ -37,15 +37,14 @@ phyto <- phyto %>% mutate(DATE=mdy(DATE))
 
 After cleaning the data using code I wrote last week, I now want to add on calculated total abundance and total richness to my data. This will allow for comparisons of these total amounts as well as for an exploration of how much biomass of a given observation certain phytoplankton make up (i.e. seeing how the relative abundance of cyanobacteria has changed over time at station 1). First, adding the richness calculation that I created earlier this week.
 
-```{r rich, echo=FALSE}
+```{r rich, echo=T}
 phyto <- left_join(phyto,phyto %>% count(SHEETBAR),by='SHEETBAR') %>% 
   rename(rich=n)
 ```
 
 Next is time for calculating the total abundance. Similar to the richness calculation, this value should be the same for each observation at the same location on the same date. However, this cannot be measured by counting the SHEETBAR variable. Instead, the sum of the TOTAL BV_um3L values from each location and date must be assigned to the observations. 
 
-```{r abund}
-#sum((phyto %>% filter(SHEETBAR == 41009893))$`TOTAL BV_um3L`)
+```{r abund, echo=T}
 total <- phyto %>% group_by(SHEETBAR) %>% 
   summarize(total_abundance = sum(`TOTAL BV_um3L`))
 phyto <- left_join(phyto,total,by='SHEETBAR')
@@ -69,7 +68,7 @@ phyto %>% ggplot(aes(DATE,rich)) +
   geom_smooth(method=lm) +
   ggtitle('Richness Over Time') +
   xlab('Date') +
-  ylab('# of Phytoplankton Taxa Observed') +
+  ylab('# of Phytoplankton Taxa') +
   theme_gdocs()
 ```
 
@@ -105,12 +104,14 @@ The same problem as before emerges, where more extreme values may be affecting t
 
 Because increases in Cyanobacteria populations can cause harmful algal blooms, it may be important to see if the relative abundance of Cyanobacteria positively or negatively affects the richness and total abundance of the larger phytoplankton population. 
 
-```{r cyan_abund}
+```{r cyan_abund,echo=T,warning=F}
 rel_cyan <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
   group_by(SHEETBAR) %>% 
   summarize(cyan_abund = sum(`TOTAL BV_um3L`))
 phyto <- left_join(phyto,rel_cyan,by='SHEETBAR')
+phyto <- phyto %>% mutate(rel_cyan = cyan_abund/total_abundance * 100)
 head(phyto$cyan_abund)
+head(phyto$rel_cyan)
 ```
 
 It appears that the join has worked for all but a few observations (175 observations of cyanobacteria abundance vs. 181 observations of total abundance). Now to plot this and see how it compares to total abundance and richness of communities.
@@ -121,9 +122,9 @@ It appears that the join has worked for all but a few observations (175 observat
 phyto %>% ggplot(aes(DATE,cyan_abund/1e9)) +
   geom_point() +
   geom_smooth(method=lm) +
-  ggtitle('Cyanobacteria Abundance Over Time') +
+  ggtitle('Cyanobacteria Abundance') +
   xlab('Date') +
-  ylab('Cyanobacteria Biovolume') +
+  ylab('Biovolume') +
   theme_gdocs()
 ```
 
@@ -176,7 +177,7 @@ phyto %>% filter(is.na(FLDNUM) == F) %>%
   ggplot(aes(FLDNUM,cyan_abund/1e9)) +
   geom_point() +
   ggtitle('Cyanobacteria Abundance') +
-  xlab('Field Number') +
+  xlab('Field Station') +
   ylab('Cyanobacteria Biovolume') +
   theme_gdocs()
 ```
@@ -189,9 +190,13 @@ high_cyan %>% ggplot(aes(cyan_abund/1e9,total_abundance/1e9)) +
   geom_point() +
   geom_smooth(method=lm)
 high_cyan %>% 
-  ggplot(aes(cyan_abund/total_abundance * 100,total_abundance/1e9)) +
+  ggplot(aes(rel_cyan,total_abundance/1e9)) +
   geom_point() +
-  geom_smooth(method=lm)
+  geom_smooth(method=lm) +
+  ggtitle('Cyanobacteria and Overall Abundance') +
+  xlab('% of Biovolume Cyanobacteria') +
+  ylab('Total Biovolume') +
+  theme_gdocs()
 ```
 
 The first graphic didn't feel quite right, so I made the second to see if the proportion of cyanobacteria to other phytoplankton was more impactful. The second graphic seems to show closer to what I expected to see based on the reading done. As the relative abundance of cyanobacteria increases (cyanobacteria biovolume/total biolume), the total abundance tends to fall at field stations that experienced more variation. Now to see if the same holds true for richness.
@@ -201,9 +206,13 @@ high_cyan %>% ggplot(aes(cyan_abund/1e9,rich)) +
   geom_point() +
   geom_smooth(method=lm)
 high_cyan %>% 
-  ggplot(aes(cyan_abund/total_abundance * 100,rich)) +
+  ggplot(aes(rel_cyan,rich)) +
   geom_point() +
-  geom_smooth(method=lm)
+  geom_smooth(method=lm) +
+  ggtitle('Cyanobacteria and Richness') +
+  xlab('% of Biovolume Cyanobacteria') +
+  ylab('# of Phytoplankton taxa') +
+  theme_gdocs()
 ```
 
 Unlike with total abundance, richness did not show a clear negative response to an increased proportion of cyanobacteria in the total biovolume measured. However, it is notable that for observations where cyanobacteria make up over 50% of the phytoplankton community, the observed measure of richness was lower than the predicted richness by the line of best fit. 
@@ -212,13 +221,21 @@ Below, I've included plots of all the field stations comparing the relative cyan
 
 ```{r}
 phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(cyan_abund/total_abundance*100,total_abundance/1e9)) +
+  ggplot(aes(rel_cyan,total_abundance/1e9)) +
   geom_point() +
-  geom_smooth(method=lm)
+  geom_smooth(method=lm) +
+  ggtitle('Cyanobacteria and Overall Abundance') +
+  xlab('% of Biovolume Cyanobacteria') +
+  ylab('Total Biovolume') +
+  theme_gdocs()
 phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(cyan_abund/total_abundance*100,rich)) +
+  ggplot(aes(rel_cyan,rich)) +
   geom_point() +
-  geom_smooth(method=lm)
+  geom_smooth(method=lm) +
+  ggtitle('Cyanobacteria and Richness') +
+  xlab('% of Biovolume Cyanobacteria') +
+  ylab('# of Phytoplankton Taxa') +
+  theme_gdocs()
 ```
 
 Interestingly, only the comparison with richness showed another positive trend. It seems that while a larger proportion of cyanobacteria might reduce the overall size of phytoplankton communities, it does not in the same way reduce the richness of the community. Comparing the effect of Cyanobacteria on other taxa would be another good step in understanding the impact. 
