@@ -1,0 +1,48 @@
+---
+title: "Storm_time_series"
+author: "Taryn Waite"
+date: "6/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Here, I'd like to create some individual time series objects out of storm events, so that I can experiment with decomposing them and plotting the trends on a concentration-discharge plot. I'll start by working through an example of one storm in the main channel site. The storm I'm using is the July 13 -- August 10, 2016 one because it's pretty long and has easy-to-see hysteresis loops associated with it.
+
+The first step is to filter for the dates and select the appropriate columns. I'll use the file with hourly water quality and discharge.
+```{r}
+WQ_hourly_discharge <- read_csv("WQ_hourly_discharge.csv")
+
+WQ_d_MC_1 <- WQ_hourly_discharge %>% 
+  filter(date >= ymd("2016-07-13") & date <= ymd("2016-08-10")) %>% 
+  filter(site == "MC") %>% 
+  select(hourlyDischarge, NO3_mgL, FDOMqsu, BGAugL, CHLugL, Turb, dateTime)
+
+# check for NAs
+sum(is.na(WQ_d_MC_1))
+```
+
+There are no NA values in this subset (yay!) so it's ready to become a time series object.
+
+```{r}
+storm_1_ts_chl <- ts(WQ_d_MC_1$CHLugL, start = 0, frequency = 12)
+plot(storm_1_ts_chl)
+fit_1_chl <- stl(storm_1_ts_chl, s.window="periodic")
+plot(fit_1_chl)
+```
+
+Now, I'll try plotting a concentration-discharge relationship but using the trend instead of the raw data. 
+
+```{r}
+# need a df with the original discharge and the trend concentration
+temp <- cbind.data.frame(WQ_d_MC_1$dateTime, WQ_d_MC_1$hourlyDischarge, fit_1_chl$time.series[,2])
+names(temp) <- c("dateTime", "discharge", "trendCHL")
+
+temp %>% ggplot(aes(x = discharge, y = trendCHL)) +
+  geom_path()
+ 
+
+```
+
