@@ -5,6 +5,7 @@ library(dataRetrieval)
 library(lubridate)
 library(fpc)
 library(cluster)
+library(gridExtra)
 set.seed(2002)
 
 #Import the Data
@@ -44,7 +45,7 @@ MC.k8
 MC.k6 <- kmeans(MC.scaled, centers=6, iter.max=100, nstart=25)
 MC.k6
 
-#Plotto show cluster
+#Plot to show cluster
 plot(Joint_Data_MC$Date_MC, MC.k8$cluster)
 plot(Joint_Data_MC$Date_MC, MC.k6$cluster)
 
@@ -71,11 +72,20 @@ for (i in 2:7){
 #Join the data with the groups now
 Joint_Data <- Joint_Data_MC %>% mutate(Cluster= MC.k8$cluster)
 
+Joint_Data<- read.csv("ClusteredDataMC.csv")
 
-time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2016)
+
+time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2016) %>% mutate(Month= month(Date_MC))
 mean(time_joint_data$Discharge) #5500
-Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date_MC, y=Discharge))+
-  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= date(Date_MC), y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+ 
+  scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "5: Average Quality", "6: High Turbidity", "8: High Discharge")) +
+  scale_x_date("Month", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
+  ggtitle("Main Channel Discharge in 2018")
+
+
+  
+?scale_color_discrete
 Time_Discharge
 #1: Very low levels (July)
 #2: Low levels
@@ -162,5 +172,34 @@ CHL_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=CHLugL))+
 CHL_Discharge
 
 ?write.csv
-write.csv(Joint_Data, file="C:ClusteredDataMC.csv", row.names = FALSE)
+write.csv(Joint_Data, file="ClusteredDataMC.csv", row.names = FALSE)
 
+#All Years Plots for Presentation
+
+mean(time_joint_data$Discharge) #5500
+Time_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= yday(Date_MC), y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+ 
+  scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "4:Low Discharge", "5: Average Quality", "6: High Turbidity", "7: Low Nitrate", "8: High Discharge")) +
+  #scale_x_date("Day of the Year", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
+  xlab("Day of the Year")+
+  ggtitle("Main Channel Discharge") +
+  facet_wrap(~year(Date_MC))
+Time_Discharge
+
+MC.scale_data<- Joint_Data %>% select(!Cluster) 
+#%>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL), !is.na(Discharge))
+MC.scaled <- scale(MC.scale_data[,-c(2)])
+plotcluster(MC.scaled, Joint_Data$Cluster, xlab= "Discharge (High<->Low)", ylab= "Blue Green Algae (High<->Low)", title= "Clustered Main Channel Data")
+
+BGA_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=BGAugL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+
+  ylab("Blue Green Algae")+
+  scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "4:Low Discharge", "5: Average Quality", "6: High Turbidity", "7: Low Nitrate", "8: High Discharge")) +
+  ggtitle("Blue green Algae vs Discharge for the Main Channel")
+CHL_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=CHLugL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+
+  ylab("Chlorophyll")+
+  scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "4:Low Discharge", "5: Average Quality", "6: High Turbidity", "7: Low Nitrate", "8: High Discharge")) +
+  ggtitle("Chlorophyll vs Discharge for the Main Channel")
+
+grid.arrange(BGA_Discharge, Turb_Discharge)
