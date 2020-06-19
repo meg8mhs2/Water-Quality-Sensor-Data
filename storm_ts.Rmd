@@ -27,10 +27,19 @@ sum(is.na(WQ_d_MC_1))
 There are no NA values in this subset (yay!) so it's ready to become a time series object.
 
 ```{r}
+# ts object for chlorophyll
 storm_1_ts_chl <- ts(WQ_d_MC_1$CHLugL, start = 0, frequency = 12)
 plot(storm_1_ts_chl)
+# decomposition for chlorophyll
 fit_1_chl <- stl(storm_1_ts_chl, s.window="periodic")
 plot(fit_1_chl)
+
+# ts object for turbidity
+storm_1_ts_turb <- ts(WQ_d_MC_1$Turb, start = 0, frequency = 12)
+plot(storm_1_ts_turb)
+# decomposition for turbidity
+fit_1_turb <- stl(storm_1_ts_turb, s.window="periodic")
+plot(fit_1_turb)
 ```
 
 Now, I'll try plotting a concentration-discharge relationship but using the trend instead of the raw data. 
@@ -39,9 +48,24 @@ Now, I'll try plotting a concentration-discharge relationship but using the tren
 # need a df with the original discharge and the trend concentration
 temp <- cbind.data.frame(WQ_d_MC_1$dateTime, WQ_d_MC_1$hourlyDischarge, fit_1_chl$time.series[,2])
 names(temp) <- c("dateTime", "discharge", "trendCHL")
-
-temp %>% ggplot(aes(x = discharge, y = trendCHL)) +
+# smoothed c-q plot
+smooth <- temp %>% ggplot(aes(x = discharge, y = trendCHL)) +
   geom_path()
+# original c-q plot
+original <- WQ_d_MC_1 %>% ggplot(aes(x = hourlyDischarge, y = CHLugL)) +
+  geom_path()
+
+# need a df with the original discharge and the trend concentration
+temp2 <- cbind.data.frame(WQ_d_MC_1$dateTime, WQ_d_MC_1$hourlyDischarge, fit_1_turb$time.series[,2])
+names(temp2) <- c("dateTime", "discharge", "trendTurb")
+# smoothed c-q plot
+smooth2 <- temp2 %>% ggplot(aes(x = discharge, y = trendTurb)) +
+  geom_path()
+# original c-q plot
+original2 <- WQ_d_MC_1 %>% ggplot(aes(x = hourlyDischarge, y = Turb)) +
+  geom_path()
+
+ggarrange(original, smooth, original2, smooth2)
  
 
 ```
