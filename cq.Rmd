@@ -1,0 +1,212 @@
+---
+title: "Concentration-Discharge Relationships"
+author: "Taryn Waite"
+date: "6/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggpubr)
+source("C_Q_plotting_functions.R")
+```
+
+```{r}
+subset <- WQ_hourly_discharge %>% 
+    filter(date >= ymd("2016-07-13") & date <= ymd("2016-08-10")) %>% 
+    filter(site == "MC")
+
+a <- subset %>%  
+      ggplot(aes(x = dateTime, y = hourlyDischarge)) +
+      geom_line() +
+      xlab("Time") +
+      ylab("Discharge (ft^3/s)")
+
+b <-  subset %>%  
+      ggplot(aes(x = dateTime, y = Turb)) +
+      geom_line() +
+      xlab("Time") +
+      ylab(y_axis_label("Turb"))
+
+c <-  subset %>%  
+    ggplot(aes(x = hourlyDischarge, y = Turb)) +
+    geom_path() 
+    
+     # put all 3 plots together
+  
+    figure <- ggarrange(a, b, c)
+    figure
+```
+
+
+```{r multi variable C-Q plotting function}
+# plots C-Q relationships for up to 4 variables
+# specify start date and end date
+# optionally specify which site to plot (otherwise, both will be included in each plot)
+multi_var_CQ <- function (var1, var2 = NA, var3 = NA, var4 = NA, startDate, endDate, site1 = NA){
+  # subset the data between the given start and end dates
+  subset <- WQ_hourly_discharge %>% 
+    filter(date >= ymd(startDate) & date <= ymd(endDate)) %>% 
+    arrange(dateTime)
+  # subset to the given site if it's provided
+  if(!is.na(site1)){
+    subset <- subset %>% 
+      filter(site == site1)
+  }
+  
+  # find the peak discharge for the storm
+  peak <- subset %>% filter(hourlyDischarge == max(hourlyDischarge)) 
+  peakDateTime <- peak[["dateTime"]]
+  
+  # classify each observation as rising limb or falling limb
+  subset <- subset %>% 
+    mutate(limb = case_when(dateTime <= peakDateTime ~ "RL", T ~ "FL"))
+  
+  
+  # plot the first variable
+  a <-  subset %>%  
+    ggplot(aes_string(x = "hourlyDischarge", y = var1, 
+                      col = case_when(!is.na(site1) ~ "limb", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("hourlyDischarge", y = var1), col = "black") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("hourlyDischarge", y = var1), col = "black") +
+      theme(legend.position = "none") +
+      xlab ("Discharge") + ylab(y_axis_label(var1)) 
+  
+  
+  figure <- a
+  
+  # plot the second variable if it's given
+  if(!is.na(var2)){
+    b <-  subset %>%  
+    ggplot(aes_string(x = "hourlyDischarge", y = var2, 
+                      col = case_when(!is.na(site1) ~ "limb", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("hourlyDischarge", y = var2), col = "black") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("hourlyDischarge", y = var2), col = "black") +
+      theme(legend.position = "none") +
+      xlab ("Discharge") + ylab(y_axis_label(var2)) 
+    
+    figure <- ggarrange(a, b)
+  }
+  
+  # plot the third variable if it's given
+  if(!is.na(var3)){
+    c <-  subset %>%  
+    ggplot(aes_string(x = "hourlyDischarge", y = var3, 
+                      col = case_when(!is.na(site1) ~ "limb", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("hourlyDischarge", y = var3), col = "black") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("hourlyDischarge", y = var3), col = "black") +
+      theme(legend.position = "none") +
+      xlab ("Discharge") + ylab(y_axis_label(var3)) 
+    
+    figure <- ggarrange(a, b, c)
+  }
+  
+  # plot the fourth variable if it's given
+  if(!is.na(var4)){
+    d <-  subset %>%  
+    ggplot(aes_string(x = "hourlyDischarge", y = var4, 
+                      col = case_when(!is.na(site1) ~ "limb", T ~ "site"))) +
+    geom_path() +
+    # start points
+      geom_point(data = subset[subset$site == "MC",][1,], 
+                aes_string("hourlyDischarge", y = var4), col = "black") +
+      geom_point(data = subset[subset$site == "SI",][1,], 
+                aes_string("hourlyDischarge", y = var4), col = "black") +
+      theme(legend.position = "none") +
+      xlab ("Discharge") + ylab(y_axis_label(var4)) 
+    
+    figure <- ggarrange(a, b, c, d)
+  }
+  # show the figure
+  figure
+}
+```
+
+Here are some examples of how we can use the multi-variable C-Q plotting function to compare the C-Q relationships for turbulence, nitrate, chlorophyll, and dissolved organic matter:
+```{r examples}
+## C-Q plots for a storm, just MC site
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-07-13", "2016-08-10", site1 = "MC")
+## C-Q plots for the same storm, just SI site
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-07-13", "2016-08-10", site1 = "SI")
+## C-Q plots for the same storm, both sites
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-07-13", "2016-08-10")
+
+
+## C-Q plots for some other storms, just MC site
+
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2015-10-04", "2015-10-19", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2015-07-06", "2015-07-28", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2015-08-05", "2015-08-17", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2015-08-17", "2015-09-04", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2015-09-04", "2015-09-17", site1 = "MC")
+
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-06-01", "2016-06-14", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-07-13", "2016-08-10", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-08-10", "2016-09-05", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-09-06", "2016-09-20", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-09-20", "2016-10-15", site1 = "MC")
+
+
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-07-19", "2017-07-25", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-06-12", "2017-06-28", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-10-05", "2017-10-31", site1 = "MC")
+
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2018-06-15", "2018-07-31", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2018-09-03", "2018-09-15", site1 = "MC")
+
+
+
+
+```
+
+```{r}
+
+a <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2015-07-06", endDate = "2015-07-28", site1 = "MC")
+#multi_var_CQ(var1 = "NO3_mgL", startDate = "2015-08-17", endDate = "2015-09-04", site1 = "MC")
+b <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2016-06-01", endDate = "2016-06-14", site1 = "MC")
+c <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2016-07-13", endDate = "2016-08-10", site1 = "MC")
+d <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2016-08-10", endDate = "2016-09-05", site1 = "MC")
+e <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2016-09-06", endDate = "2016-09-20", site1 = "MC")
+f <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2016-09-20", endDate = "2016-10-15", site1 = "MC")
+g <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2017-07-19", endDate = "2017-07-25", site1 = "MC")
+h <- multi_var_CQ(var1 = "NO3_mgL", startDate = "2018-06-15", endDate = "2018-07-31", site1 = "MC")
+#multi_var_CQ(var1 = "NO3_mgL", startDate = "2018-09-03", endDate = "2018-09-15", site1 = "MC")
+
+ggarrange(a, b, c, d)
+ggarrange(e, f, g, h)
+
+z <- multi_var_CQ(var1 = "Turb", startDate = "2016-07-13", endDate = "2016-08-10", site1 = "MC")
+
+ggarrange(b, z)
+```
+
