@@ -7,6 +7,7 @@ library(fpc)
 library(cluster)
 library(gridExtra)
 set.seed(2002)
+#MC2018.csv, MC2018Day.csv, ClusteredDataMC, MCByDay, SIByDay, ClusteredDataMCNoDis.csv
 
 #Import the Data
 filename1 <- file.path("MC_WQ.csv")
@@ -74,6 +75,9 @@ Joint_Data <- Joint_Data_MC %>% mutate(Cluster= MC.k8$cluster)
 
 Joint_Data<- read.csv("ClusteredDataMC.csv")
 
+
+
+#Graphing the Results
 
 time_joint_data <- Joint_Data %>% filter(year(Date_MC)==2016) %>% mutate(Month= month(Date_MC))
 mean(time_joint_data$Discharge) #5500
@@ -171,8 +175,17 @@ CHL_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=CHLugL))+
   geom_point(mapping=aes(color= as.character(Cluster)))
 CHL_Discharge
 
+
+
+#Saving the Clusters
+
 ?write.csv
 write.csv(Joint_Data, file="ClusteredDataMC.csv", row.names = FALSE)
+
+Joint_Data<- read.csv("ClusteredDataMC.csv")
+
+
+
 
 #All Years Plots for Presentation
 
@@ -202,4 +215,140 @@ CHL_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= Discharge, y=CHLugL))+
   scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "4:Low Discharge", "5: Average Quality", "6: High Turbidity", "7: Low Nitrate", "8: High Discharge")) +
   ggtitle("Chlorophyll vs Discharge for the Main Channel")
 
-grid.arrange(BGA_Discharge, Turb_Discharge)
+grid.arrange(BGA_Discharge, CHL_Discharge)
+
+
+
+#Re-bring in the data :)
+MC_Data_NoDis<- read.csv("MCByDay.csv")
+
+MC_Data_NoDis_Clean <-MC_Data_NoDis %>% filter(!is.na(NO3_mgL), !is.na(CHLugL), !is.na(BGAugL), !is.na(Turb), !is.na(FDOMqsu))
+#Cluster without the discharge
+MC.scaled <- scale(MC_Data_NoDis_Clean[-c(1, 7)])
+MC.k7 <- kmeans(MC.scaled, centers=7, iter.max=100, nstart=25)
+MC.k7
+
+
+
+#How many groups??? Seven!
+n <- nrow(MC.scaled)
+wss <- rep(0, 10)
+wss[1] <- (n - 1) * sum(apply(MC.scaled, 2,var))
+for (i in 2:6){
+  wss[i] <- sum(kmeans(MC.scaled, centers = i, iter.max=100, nstart=25)$withinss)
+  plot(1:10, wss, type = "b", xlab = "Number of clusters", ylab = "Within groups sum of squares")
+}
+
+
+MC.k8.clust <- lapply(1:7, function(nc) MC_Data_NoDis_Clean$Date[MC.k7$cluster==nc])  
+MC.k8.clust
+
+#Visualize 2 components
+clusplot(MC.scaled, MC.k7$cluster, color=TRUE, shade=TRUE)
+plotcluster(MC.scaled, MC.k7$cluster)
+
+#Join the data with the groups now
+Clustered_No_Dis <- MC_Data_NoDis_Clean %>% mutate(Cluster= MC.k7$cluster)
+
+
+Joint_Data<- read.csv("ClusteredDataMC.csv") #Only do to redo graphs! 
+
+time_joint_data <- Clustered_No_Dis %>% filter(year(Date)==2016) %>% mutate(Month= month(Date))
+mean(time_joint_data$Discharge) #5500
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= date(Date), y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))#+ 
+  #scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "5: Average Quality", "6: High Turbidity", "8: High Discharge")) +
+  #scale_x_date("Month", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
+  #ggtitle("Main Channel Discharge in 2018")
+Time_Discharge
+#6: Low discharge
+#1: High-mid discharge
+#7: Early high discharge and rising
+
+time_joint_data <- Clustered_No_Dis %>% filter(year(Date)==2017)
+mean(time_joint_data$Discharge) #40537
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: High discharge
+#7: Low discharge
+#4: Very specific peak
+#6: Right at the beginning
+
+
+time_joint_data <- Clustered_No_Dis %>% filter(year(Date)==2018)
+mean(time_joint_data$Discharge) #56078
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Peaks
+#4: Low levels
+#6: Very specific point
+#7: Lower/mid
+
+time_joint_data <- Clustered_No_Dis %>% filter(year(Date)==2015)
+mean(time_joint_data$Discharge) #28307
+Time_Discharge <- ggplot(data= time_joint_data, mapping= aes(x= Date, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Peak
+#2: Lower discharge, negative slope, end of season
+#3: Mid of season, mid levels
+#4: Decreasing
+#6: Reaching peaks
+#7: Top decreasing
+
+?geom_line
+Time_Discharge <- ggplot(data= Clustered_No_Dis, mapping= aes(x= yday(Date), y=Discharge, group= as.character(year(Date)))) +
+  geom_line() +
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+#1: Low discharge, high CHL, BGA
+#2: Higher averages, after peaks, high nitrate
+#3: Smaller peaks (smaller storms). Average nitrate
+#4: Low discharge, BGA
+#5: Average, low discharge
+#6: High turbidity
+#7: Low and same time/year, low nitrate and FDOM
+#8: Peaks
+
+#You can see 5 has high discharge and mid nitrate, 2 has high nitrate and mid discharge, 4, 8, 3 have low discharge and nitrate
+Nitrate_Discharge <- ggplot(data= Clustered_No_Dis, mapping= aes(x= Discharge, y=NO3_mgL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Nitrate_Discharge
+
+#You can clearly see group 4 has low discharge and BGA, 8 has low Discharge and high BGA, 5 has high Discharge and mid-low BGA
+BGA_Discharge <- ggplot(data=Clustered_No_Dis, mapping= aes(x= Discharge, y=BGAugL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+BGA_Discharge
+
+#5 is high discharge, 4 is 2016 and low discharge, 3 is low discharge, 2 is early 2017
+Time_Discharge <- ggplot(data= Clustered_No_Dis, mapping= aes(x= Date, y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+Time_Discharge
+
+#2 is high nitrate, mid BGA, 6 is mid both, 8 is high BGA and low nitrate
+BGA_Nitrate <- ggplot(data= Clustered_No_Dis, mapping= aes(x= NO3_mgL, y=BGAugL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+BGA_Nitrate
+
+#1 is low FDOM and discharge, mid BGA, 5 is high FDOM and discharge
+FDOM_Discharge <- ggplot(data= Clustered_No_Dis, mapping= aes(x= Discharge, y=FDOMqsu))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+FDOM_Discharge
+
+#8 has high CHL and low discharge
+CHL_Discharge <- ggplot(data= Clustered_No_Dis, mapping= aes(x= Discharge, y=CHLugL))+
+  geom_point(mapping=aes(color= as.character(Cluster)))
+CHL_Discharge
+
+
+
+#Saving the Clusters
+
+?write.csv
+write.csv(Clustered_No_Dis, file="ClusteredDataMCNoDis.csv", row.names = FALSE)
+
+Joint_Data<- read.csv("ClusteredDataMC.csv")
+
+
