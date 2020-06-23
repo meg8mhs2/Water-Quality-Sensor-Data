@@ -8,8 +8,36 @@ library(cluster)
 set.seed(2002)
 library(mice)
 
+#In working with this mice function, we are trying to replace the NAs for Sept 6, 2018 (11:47)
+filename1 <- file.path("MC_WQ.csv")
+data_MC_test <- read_csv(filename1)
+data_MC_test1<- data_MC_test %>% mutate(month= month(mdy(`YYYY-MM-DD`)), datetime= mdy(`YYYY-MM-DD`)+hms(`hh:mm`), year=year(mdy(`YYYY-MM-DD`) )) %>% select(month, datetime, Turb, CHLugL, year) %>% filter(year ==2018) %>% filter(month==9)
+data_MC_test1
+
+data_MC_test2<- data_MC_test %>% mutate(month= month(mdy(`YYYY-MM-DD`)), datetime= mdy(`YYYY-MM-DD`)+hms(`hh:mm`), year=year(mdy(`YYYY-MM-DD`) )) %>% select(month, datetime, Turb, CHLugL, year) %>% filter(year ==2018) %>% filter(month==9)
+data_MC_test2
+
+md.pattern(data_MC_test1)
+Attempt<-complete(mice(data_MC_test1, m=1, maxit=50, method='pmm', seed=500)) #error
+md.pattern(Attempt)
+
+?mice.impute.pmm
+mice.impute.pmm(y=data_MC_test1$Turb, x= data_MC_test1$datetime, !is.na(data_MC_test1$Turb)) #same error as above
+
+Attempt2<-complete(mice(data_MC_test2, m=1, maxit=50, method='cart', seed=500))
+md.pattern(Attempt2)
+
+data_MC_test2 %>% slice(61:71)
+Attempt2 %>% slice(61:71)
+Attempt2 %>% slice(49:60)
+
+
 filename1 <- file.path("MC_WQ.csv")
 data_MC_raw <- read_csv(filename1)
+
+
+
+
 
 #Outliers:
 # Turb
@@ -109,6 +137,15 @@ ggplot(data=MC_2015,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
 
 #2018 CLEANED==================================================
 
+#The outliers:
+# May 10, 2018 (all times)
+# May 21, 2018 (09:38, 11:38, 13:38, 15:38**)
+# July 29-Aug 1, 2018 (all times)
+
+#The missing points(from above):
+#June 22, 11 am
+#July 10, 11 am
+
 #Identify NAs, remove those at the beginning/end of the data
 md.pattern(MC_2018)
 MC_2018_Clean<- MC_2018 %>% filter(!(month %in% c(5, 10)))
@@ -200,6 +237,15 @@ MC_2018_Clean<- MC_2018_Clean %>% arrange(samp.date.time)
 MC_2018_Clean%>% filter(samp.date=="6/22/2018")
 MC_2018_Clean%>% filter(samp.date=="7/10/2018")
 
+#Dealing the outliers:
+summary(MC_2018_Clean)
+
+#cheacking to make sure there are outliers for CHL: Decide they aren't; error in identifying outliers?
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<="2018-08-05", mdy(samp.date)> "2018-08-01"))
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<"2018-07-29", mdy(samp.date)>= "2018-07-26"))
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<="2018-08-01", mdy(samp.date)>= "2018-07-29"))
+MC_2018_Clean %>% filter(mdy(samp.date)<"2018-08-03", mdy(samp.date)>= "2018-07-29") %>% ggplot(mapping=aes(x= samp.date.time, y= CHLugL)) + geom_point()
+
 
 #2017=====================================================
 md.pattern(MC_2017)
@@ -230,4 +276,11 @@ MC_NA %>% slice(74:84)
 
 MC_2015_Clean <- MC_2015 %>% filter (!(month==7 & day %in% c(1, 2, 3, 4, 5))) %>% filter(!(month %in% c(6, 10, 11)))
 # Removed about 400 observations, cleaned to July 5 - Sept 30
-                                                                                         
+ 
+
+
+
+
+
+
+#                                                                                        
