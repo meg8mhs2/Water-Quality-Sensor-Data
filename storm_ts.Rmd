@@ -152,14 +152,12 @@ trend.cq.df <- function(data, var, startDate, endDate, freq) {
   decompVar <- stl(tsVar, s.window = "periodic")
   decompDis <- stl(tsDis, s.window = "periodic")
   
-  plot(tsVar)
-  lines(decompVar$time.series[,2], col = "red")
   
   # create and return a df with dateTime, discharge, 
   #original variable, and smoothed variable
   dfOut <- cbind.data.frame(subset$dateTime, subset$hourlyDischarge,subset[,var],
                             decompVar$time.series[,2],decompDis$time.series[,2] )
-  names(dfOut) <- c("dateTime", "discharge", var, "trendVar", "trendDis")
+  names(dfOut) <- c("dateTime", "discharge", "var", "smoothVar", "smoothDis")
   return(dfOut)
 }
 ```
@@ -189,15 +187,12 @@ ma.cq.df <- function(data, var, startDate, endDate, freq) {
   # find the moving average of the discharge
   maDis <- ma(tsDis, order = freq)
   
-  plot(tsVar)
-  lines(maVar, col = "red")
-  
   
   # create and return a df with dateTime, discharge, 
   #original variable, and smoothed variable
   dfOut <- cbind.data.frame(subset$dateTime, subset$hourlyDischarge,
                            subset[,var], maVar, maDis)
-  names(dfOut) <- c("dateTime", "discharge", var, "maVar", "maDis")
+  names(dfOut) <- c("dateTime", "discharge", "var", "smoothVar", "smoothDis")
   return(dfOut)
 }
 ```
@@ -209,9 +204,11 @@ Below is a function that takes in a dataframe that was returned by one of the ab
 # makes a cq plot with the original concentration data and the smoothed data
 plot.smooth.cq <- function(data) {
   data %>% 
-    ggplot(aes_string(x = "discharge", y = colnames(data)[3])) +
+    ggplot(aes(x = discharge, y = var)) +
     geom_path(col = "grey") +
-    geom_path(aes_string(x = colnames(data)[5], y = colnames(data)[4]), col = "red")
+    geom_point(col = "grey") +
+    geom_path(aes(x = smoothDis, y = smoothVar), col = "red") +
+    geom_point(aes(x = smoothDis, y = smoothVar), col = "red")
 }
 
 ```
@@ -219,11 +216,216 @@ plot.smooth.cq <- function(data) {
 Testing the above functions...
 ```{r}
 y <- trend.cq.df(WQ_hourly_discharge, "NO3_mgL",
-                        "2018-06-15", "2018-07-31", 12)
+                        "2017-06-12", "2017-06-28", 24)
 plot.smooth.cq(y)
-plot(y$dateTime, y$discharge, type = "l")
-lines(y$dateTime, y$maDis, col = "red")
 
+# discharge time series for reference
+plot(y$dateTime, y$discharge, type = "l")
+lines(y$dateTime, y$smoothDis, col = "red")
+# concentration time series for reference
+plot(y$dateTime, y$var, type = "l")
+lines(y$dateTime, y$smoothVar, col = "red")
+
+```
+
+## Normalizing the data
+```{r}
+# normalize utility function
+normalize <- function(x, max, min){
+  return((x-min)/(max-min))
+}
+
+# given a dataframe returned by trend.cq.df or ma.cq.df, 
+# returns a dataframe with columns added for normalized versions of
+# discharge, concentration, smoothed discharge, and smoothed concentration
+normalize.cq <- function(data){
+  # identify max and min concentration and discharge values
+  maxC <- max(data$var)
+  minC <- min(data$var)
+  maxQ <- max(data$discharge)
+  minQ <- min(data$discharge)
+
+  # same for the smoothed data
+  maxCs <- max(data$smoothVar)
+  minCs <- min(data$smoothVar)
+  maxQs <- max(data$smoothDis)
+  minQs <- min(data$smoothDis)
+  
+  # add in normalized columns 
+  norm.df <- data %>% 
+    mutate(var_n = sapply(var, normalize, max = maxC, min = minC),
+      dis_n = sapply(data$discharge, normalize, max = maxQ, min = minQ),
+      smoothVar_n = sapply(smoothVar, normalize, max = maxCs, min = minCs),
+      smoothDis_n = sapply(smoothDis, normalize, max = maxQs, min = minQs))
+  return(norm.df)
+}
+```
+
+## Plotting the normalized data
+
+```{r}
+# given a dataframe returned by normalize.cq,
+# makes a cq plot of the normalized smoothed data
+plot.smooth.n.cq <- function(data) {
+  data %>% 
+    ggplot(aes(x = smoothDis_n, y = smoothVar_n)) +
+    geom_path() +
+    geom_point()
+}
+```
+
+Testing the normalization functions...
+```{r}
+y <- trend.cq.df(WQ_hourly_discharge, "Turb",
+                        "2016-07-13", "2016-08-10", 24)
+plot.smooth.cq(y)
+plot.smooth.n.cq(normalize.cq(y))
+y2 <- addLimbs(normalize.cq(y))
+```
+
+
+## Hysteresis Indices
+Here I'll develop some functions for calculating the hysteresis index for a storm. These functions will be built off the output of the normalizing function (normalize.cq). First, we need to classify the rising and falling limb segments of the storm.
+
+```{r limbs}
+addLimbs <- function(data){
+  # max discharge for normalized data has value 1
+  peakDate <- (data %>% filter(smoothDis_n == 1))[[1]]
+  # add column for rising or falling limb
+  # RL if before peakDate, FL if after, peak if on peakDate
+  dfOut <- data %>% 
+    mutate(limb = case_when(dateTime < peakDate ~ "RL",
+                            dateTime > peakDate ~ "FL",
+                            T ~ "peak"))
+  return(dfOut)
+}
+```
+
+Next, given a discharge value, we need to be able to compare the concentration at this discharge value on the rising and falling limb. Since we cannot guarantee that there will be a data point with the exact discharge value we're looking for (the data is obviously not perfectly continuous in terms of discharge), one strategy is to find the closest discharge value above the desired value and below the desired value, form a line between these 2 points in discharge-concentration space, and plug the desired discharge into the formula for this line to find the corresponding concentration value. This assumes a linear relationship between concentration and discharge, but only on a very fine scale.
+
+The function single.hi(data, d) takes in a storm dataframe with the limbs column (from addLimbs() above) and uses the above method to determine the approximate concentration values on the rising and falling limbs at the given discharge value d. Then, it calculates the hysteresis index using the method given by Lloyd et al (2016). This method entails just subracting falling limb value from the rising limb value (given that the values are already normalized).
+
+*NOTE:* If you try to execute the single.hi() function with a discharge value that is not passed through by both limbs (e.g. if the storm ends at a higher discharge than it started at, a low value of h will be passed by the rising limb but not the falling limb), then you will get a custom error message that I wrote: "Error: discharge value not intersected by both limbs". Later on when we're calculating the composite HI for the entire storm, we'll have to make sure the discharge intervals are only within the subset of the discharge that's intersected by both limbs. 
+
+*ANOTHER NOTE:* I still need to deal with the case where a single limb passes through the same discharge value more than once (e.g. if the discharge dips during the rising limb then goes back up before the storm peak).
+
+```{r}
+# utility function to find the discharge from the next data point, 
+# given a dateTime and a dataframe
+nextQ <- function(data, date){
+  if(date == data[[nrow(data), 1]]){
+    return(NA)
+  }
+  # get the next data point
+  futureDates <- data %>% filter(dateTime > date )
+  nextDate <- min(futureDates$dateTime)
+  return((data %>% filter(dateTime == nextDate))[["smoothDis_n"]])
+}
+
+# utility function to find the concentration from the next data point, 
+# given a dateTime and a dataframe
+nextC <- function(data, date){
+  if(date == data[[nrow(data), 1]]){
+    return(NA)
+  }
+  # get the next data point
+  futureDates <- data %>% filter(dateTime > date )
+  nextDate <- min(futureDates$dateTime)
+  return((data %>% filter(dateTime == nextDate))[["smoothVar_n"]])
+}
+
+# function to find the hysteresis index at a given discharge value,
+# given a storm dataframe
+single.hi <- function(data, d){
+  # add a column with the next day's smoothDis_n
+  temp <- data %>% mutate(smoothDis_n_next = sapply(dateTime, nextQ, data = data))
+  # get the times when d is between the discharges for this time and the next time
+  segments <- temp %>% filter(d > smoothDis_n & d < smoothDis_n_next |
+                              d < smoothDis_n & d > smoothDis_n_next)
+  # separate the limbs
+  segsRL <- segments %>% filter(limb == "RL")
+  segsFL <- segments %>% filter(limb == "FL")
+  
+  # if there's no rising limb segment, check to see if the exact 
+  # value of d is present in the rising limb
+  # otherwise, throw an error
+  exactRL <- F
+  if(nrow(segsRL) == 0){
+    exactRL <- data %>% filter((limb == "RL") & (smoothDis_n == d))
+    if(length(exactRL) > 0){
+      RL_val <- exactRL[["smoothVal_n"]]
+      exactRL <- T
+    } else{
+      stop (paste0("Error: discharge value not intersected by both limbs : ",
+            as.character(d)))
+    }
+  }
+  # do the same for the falling limb
+  exactFL <- F
+  if(nrow(segsFL) == 0){
+    exactFL <- data %>% filter((limb == "FL") & (smoothDis_n == d))
+    if(length(exactFL) > 0){
+      FL_val <- exactFL[["smoothVal_n"]]
+      exactFL <- T
+    } else{
+      stop (paste0("Error: discharge value not intersected by both limbs : ",
+            as.character(d)))
+    }
+  }
+  
+  if(!exactRL){
+    # store the concentrations and discharges of the segment ends
+    RL_c1 <- segsRL[["smoothVar_n"]] 
+    RL_c2 <- nextC(data, segsRL[["dateTime"]])
+    RL_q1 <- segsRL[["smoothDis_n"]]
+    RL_q2 <- segsRL[["smoothDis_n_next"]]
+    # calculate concentration at d from the segment
+    RL_val <- ((RL_c2 - RL_c1)/(RL_q2 - RL_q1))*(d - RL_q1)+RL_c1
+  }
+  
+  if(!exactFL){
+    # store the concentrations and discharges of the segment ends
+    FL_c1 <- segsFL[["smoothVar_n"]] 
+    FL_c2 <- nextC(data, segsFL[["dateTime"]])
+    FL_q1 <- segsFL[["smoothDis_n"]]
+    FL_q2 <- segsFL[["smoothDis_n_next"]]
+    # calculate concentration at d from the segment
+    FL_val <- ((FL_c2 - FL_c1)/(FL_q2 - FL_q1))*(d - FL_q1)+FL_c1
+  }
+  
+  # calculate the hysteresis index
+  HI <- RL_val - FL_val
+  
+  return(HI)
+}
+```
+
+The next step is to write a function that will calculate the HI at a bunch of intervals along the storm discharge (using the single.hi() function), and average them to determine the overall HI of the storm. The first interval should be the lowest discharge value through which both the rising and falling limb pass. Then, we can have evenly spaced intervals from there to the peak discharge (not including the peak discharge of course). Lloyd et al (2016) found that using smaller intervals gives a more robust HI. However, there comes a point where adding more and more intervals does not statistically change the HI value. We can play around with the number of intervals-- for now I'll just leave it as a parameter.
+
+```{r}
+# given normalized data and the number of intervals desired,
+# returns a vector of the discharge values at which HI will be calculated
+get.dis.intervals <- function(data, n) {
+  # find minimum discharge values for rising and falling limbs
+  mins <- data %>% filter(limb != "peak") %>% group_by(limb) %>% 
+    summarise(min = min(smoothDis_n))
+  # the larger of the two will be where the intervals start
+  startDis <- max(mins$min)
+  # return a sequence from the starting discharge to 1 (max discharge),
+  # with the length specified by the number of intervals n
+  return(seq(from = startDis, to = 1-((1-startDis)/n), length.out = n))
+}
+
+# for a given storm, calculates HI for a given number of intervals
+# and returns the average HI
+avg.hi <- function(data, n){
+  sumHI <- 0
+  ints <- get.dis.intervals(data, n)
+  for(i in ints){
+    sumHI <- sumHI + single.hi(data, i)
+  }
+  return(sumHI/n)
+}
 ```
 
 
