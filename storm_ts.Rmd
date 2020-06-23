@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(smooth)
 ```
 
 Here, I'd like to create some individual time series objects out of storm events, so that I can experiment with decomposing them and plotting the trends on a concentration-discharge plot. I'll start by working through an example of one storm in the main channel site. The storm I'm using is the July 13 -- August 10, 2016 one because it's pretty long and has easy-to-see hysteresis loops associated with it.
@@ -40,6 +41,9 @@ plot(storm_1_ts_turb)
 # decomposition for turbidity
 fit_1_turb <- stl(storm_1_ts_turb, s.window="periodic")
 plot(fit_1_turb)
+
+plot(storm_1_ts_chl)
+lines(fit_1_chl$time.series[,2], col = "red")
 ```
 
 Now, I'll try plotting a concentration-discharge relationship but using the trend instead of the raw data. 
@@ -65,8 +69,162 @@ smooth2 <- temp2 %>% ggplot(aes(x = discharge, y = trendTurb)) +
 original2 <- WQ_d_MC_1 %>% ggplot(aes(x = hourlyDischarge, y = Turb)) +
   geom_path()
 
-ggarrange(original, smooth, original2, smooth2)
+decomp_1 <- ggarrange(original, smooth, original2, smooth2)
  
 
 ```
+
+Since we don't know that the data is actually seasonal (has a daily pattern), it might make more sense to use a simple moving average to obtain a trend. Since the time series decomposition above used days as the seasonality (every 12 observations), I'll try doing a simple moving average of order 12, meaning that the window in which the average is calculated for each point is one day. I'm using the ma() function from the 'forecast' package.
+
+```{r}
+# ma for chlorophyll
+ma_1_chl <- ma(storm_1_ts_chl, order = 12)
+plot(storm_1_ts_chl)
+lines(ma_1_chl, col = "red")
+
+# ma for turbidity
+ma_1_turb <- ma(storm_1_ts_turb, order = 12)
+plot(storm_1_ts_turb)
+lines(ma_1_turb, col = "red")
+```
+
+```{r}
+# need a df with the original discharge and the ma concentration
+ma_d_1_chl <- cbind.data.frame(WQ_d_MC_1$dateTime, WQ_d_MC_1$hourlyDischarge, ma_1_chl)
+names(ma_d_1_chl) <- c("dateTime", "discharge", "maCHL")
+# smoothed c-q plot
+ma_plot_1_chl <- ma_d_1_chl %>% ggplot(aes(x = discharge, y = maCHL)) +
+  geom_path()
+# original c-q plot
+plot_1_chl <- WQ_d_MC_1 %>% ggplot(aes(x = hourlyDischarge, y = CHLugL)) +
+  geom_path()
+
+# need a df with the original discharge and the ma concentration
+ma_d_1_turb <- cbind.data.frame(WQ_d_MC_1$dateTime, WQ_d_MC_1$hourlyDischarge, ma_1_turb)
+names(ma_d_1_turb) <- c("dateTime", "discharge", "maTurb")
+# smoothed c-q plot
+ma_plot_1_turb <- ma_d_1_turb %>% ggplot(aes(x = discharge, y = maTurb)) +
+  geom_path()
+# original c-q plot
+plot_1_turb <- WQ_d_MC_1 %>% ggplot(aes(x = hourlyDischarge, y = Turb)) +
+  geom_path()
+
+ma_1 <- ggarrange(plot_1_chl, ma_plot_1_chl, plot_1_turb, ma_plot_1_turb)
+
+
+
+  ggplot(WQ_d_MC_1, aes(x = hourlyDischarge, y = CHLugL)) +
+    geom_path(col = "grey") +
+    geom_path(data = ma_d_1_chl, aes(x = discharge, y = maCHL), col = "red") +
+    geom_path(data = temp, aes(x = discharge, y = trendCHL), col = "blue")
+
+
+  ggplot(WQ_d_MC_1, aes(x = hourlyDischarge, y = Turb)) +
+    geom_path(col = "grey") +
+    geom_path(data = ma_d_1_turb, aes(x = discharge, y = maTurb), col = "red") +
+    geom_path(data = temp2, aes(x = discharge, y = trendTurb), col = "blue")
+
+```
+
+It seems like the trend component of the stl() output and the ma() output are very similar, so it might not make a big difference which one we use (I'd like to confirm this though). I think the main difference is that stl() uses Loess smoothing instead of moving average. Another issue is that, when moving average is used, the first and last 6 values are NA because the window around these points extends beyond the storm time window. If we use ma() moving forward, we might need to start with a subset that starts and ends a day before/after the storm start/end so that we can find all the smoothed values. I'm not sure how stl() handles the start and end of the time series, but it seems to somehow calulate the trend for all points.
+
+Below is a function that takes in a dataframe of discharge and concentration, as well as a storm start and end date and a variable name, and returns a dataframe with the discharge, concentration of the given variable, smoothed discharge, and smoothed concentration of the given variable for the duration of the storm. The smoothed data comes from the trend output of str(). Note: you also have to specify the frequency (number of observations per day) -- so for storms with hourly data, freq is 24 and for storms with 2-hourly data, freq is 12.
+
+```{r}
+# given a df (data) of discharge and concentration data,
+# returns a df with date-time, discharge, original concentration, 
+# and smoothed concentration
+# uses stl() to smooth the concentrations
+# note: data must have "hourlyDischarge" and "dateTime" columns
+# must also specify the frequency (# observations per day in data)
+trend.cq.df <- function(data, var, startDate, endDate, freq) {
+  # subset the data using the start and end dates
+  subset <- data %>% 
+    filter(site == "MC") %>% 
+    filter(date(dateTime) >= ymd(startDate) & date(dateTime) <= ymd(endDate)) %>% 
+    arrange(dateTime)
+  # make a time series of the given variable
+  tsVar <- ts(subset[[var]], start = 0, frequency = freq)
+  # make a time series of the discharge
+  tsDis <- ts(subset[["hourlyDischarge"]], start = 0, frequency = freq)
+  
+  # decompose the time series
+  decompVar <- stl(tsVar, s.window = "periodic")
+  decompDis <- stl(tsDis, s.window = "periodic")
+  
+  plot(tsVar)
+  lines(decompVar$time.series[,2], col = "red")
+  
+  # create and return a df with dateTime, discharge, 
+  #original variable, and smoothed variable
+  dfOut <- cbind.data.frame(subset$dateTime, subset$hourlyDischarge,subset[,var],
+                            decompVar$time.series[,2],decompDis$time.series[,2] )
+  names(dfOut) <- c("dateTime", "discharge", var, "trendVar", "trendDis")
+  return(dfOut)
+}
+```
+
+Here is a function similar to the function above except that it uses the moving average function ma() instead of the time series decomposition function str() to generate the smoothed data. I still have to fix the fact that the first and last 6 time steps are missing.
+
+```{r}
+# given a df (data) of discharge and concentration data and a variable,
+# returns a df with date-time, discharge, concentration, 
+# smoothed concentration, and smoothed discharge
+# uses ma() to smooth the concentrations
+# note: data must have "hourlyDischarge" and "dateTime" columns
+# must also specify the frequency (# observations per day in data)
+ma.cq.df <- function(data, var, startDate, endDate, freq) {
+  # subset the data using the start and end dates
+  subset <- data %>% 
+    filter(site == "MC") %>% 
+    filter(date(dateTime) >= ymd(startDate) & date(dateTime) <= ymd(endDate)) %>% 
+    arrange(dateTime)
+  
+  # make a time series of the given variable
+  tsVar <- ts(subset[[var]], start = 0, frequency = freq)
+  # make a time series of the discharge
+  tsDis <- ts(subset[["hourlyDischarge"]], start = 0, frequency = freq)
+  # find the moving average of the variable
+  maVar <- ma(tsVar, order = freq)
+  # find the moving average of the discharge
+  maDis <- ma(tsDis, order = freq)
+  
+  plot(tsVar)
+  lines(maVar, col = "red")
+  
+  
+  # create and return a df with dateTime, discharge, 
+  #original variable, and smoothed variable
+  dfOut <- cbind.data.frame(subset$dateTime, subset$hourlyDischarge,
+                           subset[,var], maVar, maDis)
+  names(dfOut) <- c("dateTime", "discharge", var, "maVar", "maDis")
+  return(dfOut)
+}
+```
+
+Below is a function that takes in a dataframe that was returned by one of the above functions, and plots the concentration-discharge relationships for both the original data and the smoothed data.
+
+```{r}
+# given a dataframe returned by trend.cq.df,
+# makes a cq plot with the original concentration data and the smoothed data
+plot.smooth.cq <- function(data) {
+  data %>% 
+    ggplot(aes_string(x = "discharge", y = colnames(data)[3])) +
+    geom_path(col = "grey") +
+    geom_path(aes_string(x = colnames(data)[5], y = colnames(data)[4]), col = "red")
+}
+
+```
+
+Testing the above functions...
+```{r}
+y <- trend.cq.df(WQ_hourly_discharge, "NO3_mgL",
+                        "2018-06-15", "2018-07-31", 12)
+plot.smooth.cq(y)
+plot(y$dateTime, y$discharge, type = "l")
+lines(y$dateTime, y$maDis, col = "red")
+
+```
+
+
 
