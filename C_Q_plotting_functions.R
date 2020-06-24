@@ -100,6 +100,14 @@ y_axis_label <- function(var){
   if(var == "FDOMqsu") return("fDOM (QSU)")
 }
 
+## generate y-axis labels for normalized C_Q plots
+y_axis_label_n <- function(var){
+  if(var == "Turb") return ("Normalized turbidity (NTU)")
+  if(var == "NO3_mgL") return ("Normalized [nitrate] (mg/L)")
+  if(var == "CHLugL") return ("Normalized [chlorophyll] (ug/L)")
+  if(var == "FDOMqsu") return("Normalized fDOM (QSU)")
+}
+
 
 
 
