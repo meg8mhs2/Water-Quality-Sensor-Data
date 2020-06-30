@@ -1,0 +1,172 @@
+---
+title: "Week 5"
+author: "James Pack"
+date: "6/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+start <- now()
+```
+
+```{r data prep, include = F}
+phytos_9606 <- read_csv('Phytos_1996-2006.csv')
+phytos_0812 <- read_csv('Phytos_2008-2012.csv')
+phyto_info <- read_csv('Phyto_info_WQdata.csv')
+
+# Combining data from all time periods
+phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
+
+# Adding water quality data, joined by SHEETBAR (ID) of sample
+phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
+
+# Cleaning the dates
+phyto <- phyto %>% mutate(DATE=mdy(DATE))
+```
+
+## Community Metrics
+
+Adding in measures for Total Abundance, Richness, Relative Cyanobacteria Abundance, Cyanobacteria Richness, and Non-Cyanobacteria Richness. Need to edit these so that NAs are given 0s
+
+```{r adding metrics}
+# Richness
+phyto <- left_join(phyto,phyto %>% count(SHEETBAR),by='SHEETBAR') %>% 
+  rename(tot_rich=n)
+# Total Abundance
+total <- phyto %>% group_by(SHEETBAR) %>% 
+  summarize(total_abundance = sum(`TOTAL BV_um3L`))
+phyto <- left_join(phyto,total,by='SHEETBAR')
+# Cyanobacteria Abundance
+cyan_abundance <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- left_join(phyto,cyan_abundance,by='SHEETBAR')
+phyto <- phyto %>% mutate(case_when(is.na(cyan_abund) == T ~ 0))
+# Relative Cyanobacteria Abundance
+phyto <- phyto %>% mutate(rel_cyan = cyan_abund/total_abundance * 100)
+# Cyanobacteria Richness
+cyan_richness <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
+  count(SHEETBAR)
+phyto <- left_join(phyto,cyan_richness,by='SHEETBAR') %>% 
+  rename(cyan_rich=n)
+phyto <- phyto %>% mutate(case_when(is.na(cyan_rich) == T ~ 0))
+# Non-Cyanobacteria Abundance
+phyto <- phyto %>% mutate(non_cyan_abund = total_abundance - cyan_abund)
+# Relative Non-Cyanobacteria Abundance
+phyto <- phyto %>% 
+  mutate(rel_non_cyan_abund = non_cyan_abund/total_abundance * 100)
+# Non-Cyanobacteria Richness
+phyto <- phyto %>% mutate(non_cyan_rich = tot_rich - cyan_rich)
+```
+
+## Cyanobacteria
+
+```{r cyano species}
+cyan_at_pool <- function(pool_num){
+  return(unique((phyto %>% filter(DIVISION == 'Cyanobacteria' & FLDNUM == pool_num))$GENUS))
+}
+cyan_pool_1 <- cyan_at_pool(1)
+cyan_pool_2 <- cyan_at_pool(2)
+cyan_pool_3 <- cyan_at_pool(3)
+cyan_pool_4 <- cyan_at_pool(4)
+cyan_pool_5 <- cyan_at_pool(5)
+cyan_pool_6 <- cyan_at_pool(6)
+all_pools <- unique((phyto %>% filter(DIVISION == 'Cyanobacteria'))$GENUS)
+```
+
+```{r cyano species common}
+present_everywhere <- cyan_pool_1 %>% 
+  intersect(cyan_pool_2) %>% intersect(cyan_pool_3) %>% 
+  intersect(cyan_pool_4) %>% intersect(cyan_pool_5) %>% 
+  intersect(cyan_pool_6)
+print(present_everywhere)
+```
+
+```{r classifying cyano}
+harmful <- c('Aphanizomenon sp.','Dolichospermum sp.','Microcystis aeruginosa', 'Planktothrix sp.', 'Pseudanabaena limnetica', 'Merismopedia tenuissima', 'Merismopedia punctata', 'Merismopedia tenuis', 'Aphanocapsa delicatissima', 'Aphanocapsa sp.', 'Raphidiopsis curvata', 'Woronichinia karelica') #cyanotoxins, Raphidiopsis found at https://onlinelibrary.wiley.com/doi/abs/10.1046/j.1529-8817.2001.01075.x, Woronichinia (potentially toxic) found at https://www.inaturalist.org/guide_taxa/700578
+n_fixer <- c('Aphanizomenon sp.','Dolichospermum sp.','Planktothrix sp.') #heterocystous
+like_algae <- c('Chroococcus microscopicus','Chroococcus sp.') #according to this source, like eukaryotic algaes https://micro.magnet.fsu.edu/featuredmicroscopist/vanegmond/chroococcussmall.html
+oscillatoriales <- c('Planktolyngbya limnetica', 'Planktolyngbya contorta') #oscillatoriales order, https://www.inaturalist.org/guide_taxa/751676 
+thick_wall <- c('Dolichospermum sp.','Cylindrospermopsis raciborskii') #akinete
+```
+
+```{r cyano common relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+common_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(GENUS %in% present_everywhere) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(common_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(common_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_common_cyan = common_cyan_abund/total_abundance * 100)
+```
+
+```{r cyano common percent}
+common_percent <- (phyto %>% 
+                     filter(GENUS %in% present_everywhere) %>% 
+                     count() / phyto %>% 
+                     filter(DIVISION == 'Cyanobacteria') %>% 
+                     count()
+                     )$n
+```
+
+```{r cyano uncommon relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+uncommon_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(DIVISION == 'Cyanobacteria') %>% 
+  filter(!(GENUS %in% present_everywhere)) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(uncommon_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(uncommon_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_uncommon_cyan = uncommon_cyan_abund/total_abundance * 100)
+```
+
+
+## PCA of Environmental Factors
+
+```{r selecting nutrient factors}
+nutrients <- phyto_info %>% 
+  select(FLDNUM,DO,SRP,TP,TN,NOX,SI) %>% 
+  na.omit() # Using na.omit, lost 4 records
+# Using just the nutrients here to separate the field stations
+cor(nutrients)
+nutrients.pc <- princomp(nutrients[,-c(1,3,6)],cor=T,scores=T)
+summary(nutrients.pc,loadings=T)
+# scree plot
+plot(1:(length(nutrients.pc$sdev)),  (nutrients.pc$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+
+# plotting with FLDNUM labels
+plot(nutrients.pc$scores[,2]~nutrients.pc$scores[,1],
+     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+text(nutrients.pc$scores[,1], nutrients.pc$scores[,2],
+     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+```
+
+```{r selecting physical factors}
+physical <- phyto_info %>% 
+  select(FLDNUM,TEMP,PH,TURB) %>% 
+  na.omit() # Lost 16 observations
+# Using just the physical factors here to separate the field stations
+cor(physical)
+physical.pc <- princomp(physical[,-c(1)],cor=T,scores=T)
+summary(physical.pc,loadings=T)
+# scree plot
+plot(1:(length(physical.pc$sdev)),  (physical.pc$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+
+# plotting with FLDNUM labels
+plot(physical.pc$scores[,2]~physical.pc$scores[,1],
+     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+text(physical.pc$scores[,1], physical.pc$scores[,2],
+     labels=physical$FLDNUM, cex=0.7, lwd=2)
+```
+
+
