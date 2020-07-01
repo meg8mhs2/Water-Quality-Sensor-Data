@@ -13,7 +13,7 @@ source("C_Q_plotting_functions.R")
 
 ```{r}
 subset <- WQ_hourly_discharge %>% 
-    filter(date >= ymd("2016-07-13") & date <= ymd("2016-08-10")) %>% 
+    filter(date >= ymd("2017-05-18") & date <= ymd("2017-06-09")) %>% 
     filter(site == "MC")
 
 a <- subset %>%  
@@ -149,17 +149,48 @@ multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
 
 ## C-Q plots for some other storms, just MC site
 
-multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
-             "2015-10-04", "2015-10-19", site1 = "MC")
+# ================================ 2015 =====================================
+
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2015-07-06", "2015-07-28", site1 = "MC")
+#multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             #"2015-08-05", "2015-08-17", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
-             "2015-08-05", "2015-08-17", site1 = "MC")
+             "2015-08-18", "2015-09-04", site1 = "MC")
+# below has missing value
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
-             "2015-08-17", "2015-09-04", site1 = "MC")
+             "2015-09-09", "2015-09-17", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
-             "2015-09-04", "2015-09-17", site1 = "MC")
+             "2015-09-17", "2015-09-24", site1 = "MC")
+#multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             #"2015-10-05", "2015-10-19", site1 = "MC")
 
+# ================================ 2016 =====================================
+
+# deal with some single missing data rows for 20166 events 
+reassign<- function (data, var, DateTime){
+  t<-((data[which(data$dateTime==ymd_hms(DateTime) - 7200), var]+
+         data[which(data$dateTime==ymd_hms(DateTime) + 7200), var])/2)
+  return(as.numeric(t))
+}
+WQ_hourly_discharge[which(WQ_hourly_discharge$dateTime==ymd_hms("2016-05-16 10:34:00")),] %<>%
+  mutate(NO3_mgL = reassign(WQ_hourly_discharge, "NO3_mgL", ymd_hms("2016-05-16 10:34:00")),
+         Turb = reassign(WQ_hourly_discharge, "Turb", ymd_hms("2016-05-16 10:34:00")),
+         CHLugL = reassign(WQ_hourly_discharge, "CHLugL", ymd_hms("2016-05-16 10:34:00")),
+         FDOMqsu = reassign(WQ_hourly_discharge, "FDOMqsu", ymd_hms("2016-05-16 10:34:00")),
+         Temp = reassign(WQ_hourly_discharge, "Temp", ymd_hms("2016-05-16 10:34:00")))
+
+WQ_hourly_discharge[which(WQ_hourly_discharge$dateTime==ymd_hms("2016-10-11 10:49:00")),] %<>%
+  mutate(NO3_mgL = reassign(WQ_hourly_discharge, "NO3_mgL", ymd_hms("2016-10-11 10:49:00")),
+         Turb = reassign(WQ_hourly_discharge, "Turb", ymd_hms("2016-10-11 10:49:00")),
+         CHLugL = reassign(WQ_hourly_discharge, "CHLugL", ymd_hms("2016-10-11 10:49:00")),
+         FDOMqsu = reassign(WQ_hourly_discharge, "FDOMqsu", ymd_hms("2016-10-11 10:49:00")),
+         Temp = reassign(WQ_hourly_discharge, "Temp", ymd_hms("2016-10-11 10:49:00")))
+
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-04-25", "2016-05-24", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2016-05-28", "2016-07-11", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2016-06-01", "2016-06-14", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
@@ -171,13 +202,26 @@ multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2016-09-20", "2016-10-15", site1 = "MC")
 
+# ================================ 2017 =====================================
 
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-06-14", "2017-06-28", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2017-07-19", "2017-07-25", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
-             "2017-06-12", "2017-06-28", site1 = "MC")
+             "2017-07-26", "2017-07-30", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-08-06", "2017-08-13", site1 = "MC")
+#multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             #"2017-08-13", "2017-09-17", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-08-16", "2017-09-17", site1 = "MC")
+multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
+             "2017-09-20", "2017-09-24", site1 = "MC")
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2017-10-05", "2017-10-31", site1 = "MC")
+
+# ================================ 2018 =====================================
 
 multi_var_CQ(var1 = "Turb", var2 = "NO3_mgL", var3 = "CHLugL", var4 = "FDOMqsu",
              "2018-06-15", "2018-07-31", site1 = "MC")
