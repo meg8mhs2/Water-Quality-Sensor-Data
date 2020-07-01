@@ -350,5 +350,25 @@ CHL_Discharge
 write.csv(Clustered_No_Dis, file="ClusteredDataMCNoDis.csv", row.names = FALSE)
 
 Joint_Data<- read.csv("ClusteredDataMC.csv")
+Joint_Data_2<- read.csv("ClusteredDataMCNoDis.csv")
 
+#Week 3 Presentation
+Time_Discharge <- ggplot(data= Joint_Data, mapping= aes(x= yday(Date_MC), y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+ 
+  scale_color_discrete(name= "Cluster", labels= c("1: High Chlorophyll", "2: High Nitrate", "3: Smaller Storms", "4:Low Discharge", "5: Average Quality", "6: High Turbidity", "7: Low Nitrate", "8: High Discharge")) +
+  #scale_x_date("Day of the Year", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
+  xlab("Day of the Year")+
+  ggtitle("Main Channel Discharge") +
+  facet_wrap(~year(Date_MC))
+Time_Discharge
+
+Time_Discharge_2 <- ggplot(data= Joint_Data_2, mapping= aes(x= yday(ymd(Date)), y=Discharge))+
+  geom_point(mapping=aes(color= as.character(Cluster)))+ 
+  scale_color_discrete(name= "Cluster", labels= c("1: High Dissolved Organic Matter", "2: Low Blue-Green Algae", "3:Low Dissolved Organic Matter", "4: High Blue-Green Algae and Chlorophyll", "5: High Turbidity", "6: Low Nitrate", "7: Average")) +
+  #scale_x_date("Day of the Year", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
+  xlab("Day of the Year")+
+  ggtitle("Main Channel Discharge") +
+  facet_wrap(~year(ymd(Date)))
+
+ Time_Discharge_2
 

@@ -1,0 +1,503 @@
+---
+title: "SI Cleaning and Time Series"
+author: "Megan J"
+date: "June 23, 2020"
+output: html_document
+---
+
+SI2015Hourly, SI2015BiHourly.csv, SI2016BiHourly.csv, SI2018BiHourly, SI2016Hourly
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(naniar)
+library(dplyr)
+library(lubridate)
+library(fpc)
+#library(cluster)
+set.seed(2002)
+library(forecast)
+library(mice)
+#library(xts)
+```
+
+##Outliers
+
+Turb:
+Oct 2, 2015 (13:17) 
+August 16, 2017 (23:28) 
+June 25, 2018 (14:15)
+
+BGA:
+Aug 18, 2016 (13:28)
+
+FDOM:
+June 17, Aug 18 2016 (15:16, 13:28)
+May 11, Sept 15 2017 (11:02, 10:23)
+
+Nitrate
+Single outliers (high):
+Aug 20 & 21 2018 (22:36, 00:36)
+
+Single Outliers (low):
+June 17 2016 (15:16)
+Aug 18 2016 (13:28)
+May 11 2017 (11:02)
+May 10 & 13 2018 (9:37, 10:37, 11:37) (10:01)
+
+
+2015
+Oct 2, 2015 (13:17) 
+
+2016
+Aug 18, 2016 (13:28**)
+June 17, Aug 18 2016 (15:16*)
+
+2017
+May 11 2017 (11:02*)
+August 16, 2017 (23:28)
+Sept 15 2017 (10:23)
+
+2018
+May 10 & 13 2018 (9:37, 10:37, 11:37) (10:01)
+June 25, 2018 (14:15)
+Aug 20 & 21 2018 (22:36, 00:36)
+
+
+
+```{r Identifying the Missing Points}
+filename2 <- file.path("SI_WQ.csv")
+data_SI_raw <- read_csv(filename2)
+
+SI_2018 <- data_SI_raw %>% filter(yr==2018) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=SI_2018,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+#May 10, 12 pm
+#Stop on Oct 9 at 5 am
+#Every hour
+
+SI_2017 <- data_SI_raw %>% filter(yr==2017) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=SI_2017,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+#Every other hour May 11 (15)- July 7 (15)
+#missing June 12 at 11
+#Every hour July 7 (15)- Oct 26 (11)
+
+SI_2016 <- data_SI_raw %>% filter(yr==2016) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=SI_2016,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+# Every other hour on the odd hour apr 8 (15)- oct 14 (9)
+
+SI_2015 <- data_SI_raw %>% filter(yr==2015) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=SI_2015,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+#Every hour June 1 (14)-Oct 1 (11), every odd hour Oct 1 (11)- 15 (9)
+#Missing July 26 (13), Aug 21 (6)
+
+```
+
+
+
+```{r Functions for Cleaning}
+#Function to find the average for a data point that is set at NA
+#DataSet is the data set
+#DataSetVar is the data set with the var, in the format DataSet$Var
+#DateTime is a String that is in the format "YYYY-MM-DD HH:MM:SS"
+#The function returns the average value of the data directly above and below the inputted point (DateTime) for the given variable
+
+reassign<- function(DataSet, DataSetVar, DateTime){
+  t<-((DataSetVar[which(DataSet$samp.date.time==DateTime)-3]+
+         DataSetVar[which(DataSet$samp.date.time==DateTime)-5])/2)
+  return(t)
+}
+
+#A function that finds the average of 2 points
+#DataSet is the data set
+#DataSetVar is the data set with the var, in the format DataSet$Var
+##DateTime is a String that is in the format "YYYY-MM-DD HH:MM:SS". Note that this should be the time and data point 
+#directly AFTER where the inputted value would be
+#The function returns the average value of the inputted data point and the one directly before, so that a new point can
+#be added with the returned value.
+
+Assign<- function(DataSet, DataSetVar, DateTime){
+  t<-((DataSetVar[which(DataSet$samp.date.time==DateTime)-4]+
+         DataSetVar[which(DataSet$samp.date.time==DateTime)-5])/2)
+  return(t)
+}
+
+Assign2<- function(DataSet, DataSetVar, Date, Hour){
+  t<-((DataSetVar[which(DataSet$date==Date & DataSet$hour == Hour)]+
+         DataSetVar[which(DataSet$date==Date & DataSet$hour == Hour)+1])/2)
+  return(t)
+}
+#A function that creates a new data point with the inputted values
+#DataSet is the data set.
+#Value is the value of the point directly after where the new point will be, in the format "YYYY-MM-DD HH:MM:SS"
+#samp.date is the date of the new point, in the format "MM/DD/YYYY"
+#samp.time is the time of the new point, in the format "HH:MM:SS"
+#month, day and hour are integers of the new point
+#samp.date.time is the date and time of the new point, in the format, "YYYY-MM-DD HH:MM:SS". 
+#In error, the function adds 4 hours to the samp.date.time. As there is no current solution, one must substract 4 hours
+#The function returns a new point with all of the given inputs
+NewPoint<- function(DataSet, Value, samp.date, samp.time, month, day, hour, samp.date.time){
+  NewPoint1Turb <-Assign(DataSet, DataSet$Turb, Value)
+  NewPoint1CHL <-Assign(DataSet, DataSet$CHLugL, Value)
+  NewPoint1BGA <-Assign(DataSet, DataSet$BGAugL, Value)
+  NewPoint1FDOM <-Assign(DataSet, DataSet$FDOMqsu, Value)
+  NewPoint1NO3 <-Assign(DataSet, DataSet$NO3_mgL, Value)
+  NewPoint <- data.frame("samp.date"= samp.date, "samp.time"= samp.time, "Turb" = NewPoint1Turb, 
+                         "CHLugL"= NewPoint1CHL,"BGAugL"= NewPoint1BGA,"FDOMqsu"= NewPoint1FDOM,
+                         "NO3_mgL"= NewPoint1NO3, "month"=  month, "day"= day, "hour"= hour,
+                         "samp.date.time"= samp.date.time)
+  return(NewPoint)
+}
+
+NewPoint2<- function(DataSet, date, hour, day, month){
+  NewPoint1Turb <-Assign2(DataSet, DataSet$Turb, date, hour-2)
+  NewPoint1CHL <-Assign2(DataSet, DataSet$CHLugL, date, hour-2)
+  NewPoint1BGA <-Assign2(DataSet, DataSet$BGAugL, date, hour-2)
+  NewPoint1FDOM <-Assign2(DataSet, DataSet$FDOMqsu, date, hour-2)
+  NewPoint1NO3 <-Assign2(DataSet, DataSet$NO3_mgL, date, hour-2)
+  NewPoint <- data.frame("date"= date(date), "Turb" = NewPoint1Turb, 
+                         "CHLugL"= NewPoint1CHL,"BGAugL"= NewPoint1BGA,"FDOMqsu"= NewPoint1FDOM,
+                         "NO3_mgL"= NewPoint1NO3, "month"=  month, "day"= day, "hour"= hour)
+  return(NewPoint)
+}
+
+```
+
+```{r 2018}
+#Missing points
+#May 10, 12 pm
+#Stop on Oct 9 at 5 am
+
+#Outliers
+# May 10 & 13 2018 (9:37, 10:37, 11:37) (10:01) removed
+# June 25, 2018 (14:15)
+# Aug 20 & 21 2018 (22:36, 00:36)
+
+md.pattern(SI_2018)
+#479 missing all five
+#one missing nitrate
+SI_NA<- SI_2018%>% filter(is.na(Turb))
+SI_NA
+ggplot(data= SI_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+
+#PLAN FOR DATA:
+#Only start May 22 (14) DONE
+#Handle outliers on June 25, 2018 (14:15) DONE
+#Missing June 28 at 13:00 DONE
+#Fill in July 21 (22)- 28 (6)
+#Fill in Aug 1 (14)- 2 (9)
+#Handle outliers on Aug 20 & 21 2018 (22:36, 00:36) DONE
+#Stop Oct 7 at 7:00 DONE
+
+SI_2018_Clean<- SI_2018
+#June 25, 2018 (14:15)
+SI_2018_Clean$Turb[(which(SI_2018_Clean$samp.date.time=="2018-06-25 14:15:00")-4)] <- reassign(SI_2018_Clean, SI_2018_Clean$Turb, "2018-06-25 14:15:00")
+SI_2018_Clean$BGAugL[(which(SI_2018_Clean$samp.date.time=="2018-06-25 14:15:00")-4)] <- reassign(SI_2018_Clean, SI_2018_Clean$BGAugL, "2018-06-25 14:15:00")
+SI_2018_Clean$FDOMqsu[(which(SI_2018_Clean$samp.date.time=="2018-06-25 14:15:00")-4)] <- reassign(SI_2018_Clean, SI_2018_Clean$FDOMqsu, "2018-06-25 14:15:00")
+SI_2018_Clean$NO3_mgL[(which(SI_2018_Clean$samp.date.time=="2018-08-20 22:36:00")-4)] <- reassign(SI_2018_Clean, SI_2018_Clean$NO3_mgL, "2018-08-20 22:36:00")
+SI_2018_Clean$NO3_mgL[(which(SI_2018_Clean$samp.date.time=="2018-08-21 00:36:00")-4)] <- reassign(SI_2018_Clean, SI_2018_Clean$NO3_mgL, "2018-08-21 00:36:00")
+
+SI_2018_Clean2<-SI_2018_Clean 
+SI_2018_Clean2$NO3_mgL[(which(SI_2018_Clean2$samp.date.time=="2018-06-28 13:16:00")-4)] <- reassign(SI_2018_Clean2, SI_2018_Clean2$NO3_mgL, "2018-06-28 13:16:00")
+SI_2018_Clean2$Turb[(which(SI_2018_Clean2$samp.date.time=="2018-06-28 13:16:00")-4)] <- reassign(SI_2018_Clean2, SI_2018_Clean2$Turb, "2018-06-28 13:16:00")
+SI_2018_Clean2$FDOMqsu[(which(SI_2018_Clean2$samp.date.time=="2018-06-28 13:16:00")-4)] <- reassign(SI_2018_Clean2, SI_2018_Clean2$FDOMqsu, "2018-06-28 13:16:00")
+SI_2018_Clean2$CHLugL[(which(SI_2018_Clean2$samp.date.time=="2018-06-28 13:16:00")-4)] <- reassign(SI_2018_Clean2, SI_2018_Clean2$CHLugL, "2018-06-28 13:16:00")
+SI_2018_Clean2$BGAugL[(which(SI_2018_Clean2$samp.date.time=="2018-06-28 13:16:00")-4)] <- reassign(SI_2018_Clean2, SI_2018_Clean2$BGAugL, "2018-06-28 13:16:00")
+
+SI_2018_Clean3<-SI_2018_Clean2 %>% filter(!(month==5 &(is.na(Turb)| day<22)), !(month== 10 & is.na(Turb)))
+
+write.csv(SI_2018_Clean3, file="SI2018IP.csv", row.names = FALSE)
+
+SI_2018_Clean3<- read.csv("SI2018IP.csv")
+SI_2018_Clean5 <- SI_2018_Clean3 %>% replace_with_na_at(.vars= c('FDOMqsu'), condition=~.x<2)
+
+SI_2018_Clean5$CHLugL<- case_when(!is.na(SI_2018_Clean5$FDOMqsu)~  SI_2018_Clean5$CHLugL)
+SI_2018_Clean5$TUrb<- case_when(!is.na(SI_2018_Clean5$FDOMqsu)~  SI_2018_Clean5$Turb)
+SI_2018_Clean5$BGAugL<- case_when(!is.na(SI_2018_Clean5$FDOMqsu)~  SI_2018_Clean5$BGAugL)
+SI_2018_Clean5$NO3_mgL<- case_when(!is.na(SI_2018_Clean5$FDOMqsu)~  SI_2018_Clean5$NO3_mgL)
+ 
+SI_2018_Clean4<- SI_2018_Clean5 %>% filter(month==7 | (month==8 & day<20))
+
+?case_when
+  na_if(SI_2018_Clean3, FDOMqsu<0)
+
+#Some big problems 2018-07-29 17:29:00- 2018-08-01 13:30:00
+#MICE: Honestly not the best but not sure what else to do
+xname<- c('hour')
+r<- stats::complete.cases(SI_2018_Clean4[, xname])
+x<- SI_2018_Clean4[r, xname]
+y<- SI_2018_Clean4[r, 'Turb']
+ry<- !is.na(y)
+
+Turb<-mice.impute.norm.boot(y, ry, x )
+SI_2018_Clean5$Turb[is.na(SI_2018_Clean5$Turb)] <-Turb
+
+y<- SI_2018_Clean4[r, 'CHLugL']
+ry<- !is.na(y)
+CHL<-mice.impute.norm.boot(y, ry, x )
+SI_2018_Clean5$CHLugL[is.na(SI_2018_Clean5$CHLugL)] <-CHL
+
+y<- SI_2018_Clean4[r, 'BGAugL']
+BGA<-mice.impute.norm.boot(y, ry, x )
+SI_2018_Clean5$BGAugL[is.na(SI_2018_Clean5$BGAugL)] <-BGA
+
+y<- SI_2018_Clean4[r, 'FDOMqsu']
+FDOM<-mice.impute.norm.boot(y, ry, x )
+SI_2018_Clean5$FDOMqsu[is.na(SI_2018_Clean5$FDOMqsu)] <-FDOM #Some big problems 2018-07-29 17:29:00- 2018-08-01 13:30:00
+
+y<- SI_2018_Clean4[r, 'NO3_mgL']
+NO3<-mice.impute.norm.boot(y, ry, x )
+SI_2018_Clean5$NO3_mgL[is.na(SI_2018_Clean5$NO3_mgL)] <-NO3
+
+ggplot(data= SI_2018_Clean5, mapping=aes(x= ymd_hms(samp.date.time), y=NO3_mgL)) + geom_line()
+
+SI_2018_Clean6<- SI_2018_Clean5 %>% mutate(date= date(mdy(samp.date))) %>% select(!TUrb)
+
+
+##DISCHARGE
+
+#Hourly (June 1 - Sept 30)
+dis_SI_2018 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2018-05-22", endDate = "2018-10-07")
+dis_SI_2018_Hourly<- dis_SI_2018 %>% filter(!is.na(`X_00060_00000`))  %>%
+  mutate( date= date(dateTime),hour= hour(dateTime)) %>% 
+  group_by(date, hour) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+
+NewPointsDis<-data.frame("date"= c(date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18")), "Discharge"= c(33925, 33925, 34300, 34300, 34300, 35400, 35400, 35400, 36800, 36800, 36800, 37000, 37000, 37000, 37100, 37100, 37100, 37100, 37100, 37100, 37100, 37000, 37000, 37000, 36900, 36900),  "hour"=c(9, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 1, 2, 3, 5, 6, 7, 9,10, 11, 13, 14, 15, 17, 18))
+
+dis_SI_2018_Hourly2<- rbind(dis_SI_2018_Hourly, NewPointsDis)
+dis_SI_2018_Hourly2<- dis_SI_2018_Hourly2 %>% arrange(date, hour)
+
+md.pattern(dis_SI_2018_Hourly)
+
+SI_2018_Hourly <- left_join(SI_2018_Clean6, dis_SI_2018_Hourly2, by=c("date"="date", "hour"="hour"))
+
+md.pattern(SI_2018_Hourly)
+
+write.csv(SI_2018_Hourly, file="SI2018Hourly.csv", row.names = FALSE)
+
+
+
+
+
+#Bihourly (on the odd hour) (June 1- Oct 15)
+dis_SI_2018_BiHourly<- dis_SI_2018_Hourly2 %>%
+  mutate(`HourDiv2`= trunc(hour/2)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(Discharge), hour= mean(hour)) 
+dis_SI_2018_BiHourly$hour <- ((dis_SI_2018_BiHourly$`HourDiv2`*2)+1)
+  
+
+
+SI_2018_Clean7<- SI_2018_Clean6 %>% 
+  mutate(`HourDiv2`= trunc(hour/2)) %>%
+  group_by(date, HourDiv2) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), month= mean(month), day= mean(day), hour= c(1))
+SI_2018_Clean7$hour <- ((SI_2018_Clean7$`HourDiv2`*2)+1)
+md.pattern(SI_2018_Clean7)
+md.pattern(dis_SI_2018_BiHourly)
+?left_join
+SI_2018_BiHourly <- left_join(SI_2018_Clean7, dis_SI_2018_BiHourly, by=c("date"="date", "hour"="hour"))
+
+md.pattern(SI_2018_BiHourly)
+SI_2018_BiHourly %>% filter(is.na(Discharge))
+
+ggplot(data= SI_2018_BiHourlyIP, aes(x= ymd(date), y=Discharge))+ geom_point()
+write.csv(SI_2018_BiHourly, file="SI2018BiHourly.csv", row.names = FALSE)
+
+```
+
+```{r 2017}
+#Missing points
+#Every other hour May 11 (15)- July 7 (15)
+#missing June 12 at 11
+#Every hour July 7 (15)- Oct 26 (11)
+
+#Outliers
+# May 11 2017 (11:02*)
+# August 16, 2017 (23:28)
+# Sept 15 2017 (10:23)
+
+md.pattern(SI_2017)
+#1657 missing all five
+SI_NA<- SI_2017%>% filter(is.na(Turb))
+SI_NA
+ggplot(data= SI_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+#Missing data July 18 at 10
+#Missing data July 21 (15)- Aug 25 (10)
+#Missing data Sep 21 (8)- Oct 26
+
+```
+
+
+```{r 2016}
+#Missing Data
+# Every other hour on the odd hour apr 8 (15)- oct 14 (9) done
+
+#Outliers
+# Aug 18, 2016 (13:28**) done
+# June 17 (15:16*) done
+
+md.pattern(SI_2016)
+#48 missing all five done
+SI_NA<- SI_2016%>% filter(is.na(NO3_mgL))
+SI_NA 
+ggplot(data= SI_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+#Missing Sep 26 (17)- Sept 30 (11), Oct 14 (14 and 16) done
+
+SI_2016_Clean <-SI_2016
+
+#Aug 18 (13:28) Outlier
+SI_2016_Clean$Turb[(which(SI_2016_Clean$samp.date.time=="2016-08-18 13:28:00")-2)] <- reassign(SI_2016_Clean, SI_2016_Clean$Turb, "2016-08-18 13:28:00")
+SI_2016_Clean$CHLugL[(which(SI_2016_Clean$samp.date.time=="2016-08-18 13:28:00")-2)] <- reassign(SI_2016_Clean, SI_2016_Clean$CHLugL, "2016-08-18 13:28:00")
+SI_2016_Clean$BGAugL[(which(SI_2016_Clean$samp.date.time=="2016-08-18 13:28:00")-2)] <- reassign(SI_2016_Clean, SI_2016_Clean$BGAugL, "2016-08-18 13:28:00")
+SI_2016_Clean$FDOMqsu[(which(SI_2016_Clean$samp.date.time=="2016-08-18 13:28:00")-2)] <- reassign(SI_2016_Clean, SI_2016_Clean$FDOMqsu, "2016-08-18 13:28:00")
+SI_2016_Clean$NO3_mgL[(which(SI_2016_Clean$samp.date.time=="2016-08-18 13:28:00")-2)] <- reassign(SI_2016_Clean, SI_2016_Clean$NO3_mgL, "2016-08-18 13:28:00")
+
+SI_2016_Clean2<- SI_2016_Clean
+
+#Jun 17 (15:16) Outlier
+SI_2016_Clean2$Turb[(which(SI_2016_Clean2$samp.date.time=="2016-06-17 15:16:00")-2)] <- reassign(SI_2016_Clean2, SI_2016_Clean2$Turb, "2016-06-17 15:16:00")
+SI_2016_Clean2$CHLugL[(which(SI_2016_Clean2$samp.date.time=="2016-06-17 15:16:00")-2)] <- reassign(SI_2016_Clean2, SI_2016_Clean2$CHLugL, "2016-06-17 15:16:00")
+SI_2016_Clean2$BGAugL[(which(SI_2016_Clean2$samp.date.time=="2016-06-17 15:16:00")-2)] <- reassign(SI_2016_Clean2, SI_2016_Clean2$BGAugL, "2016-06-17 15:16:00")
+SI_2016_Clean2$FDOMqsu[(which(SI_2016_Clean2$samp.date.time=="2016-06-17 15:16:00")-2)] <- reassign(SI_2016_Clean2, SI_2016_Clean2$FDOMqsu, "2016-06-17 15:16:00")
+SI_2016_Clean2$NO3_mgL[(which(SI_2016_Clean2$samp.date.time=="2016-06-17 15:16:00")-2)] <- reassign(SI_2016_Clean2, SI_2016_Clean2$NO3_mgL, "2016-06-17 15:16:00")
+
+SI_2016_Clean3<- SI_2016_Clean2 %>% filter(!(month== 10 & is.na(Turb)))
+
+SI_2016_Clean4<-SI_2016_Clean2%>% filter(month== c(9,10))
+
+#Did what I could for now, probably need to revisit or even just remove
+xname<- c('hour')
+r<- stats::complete.cases(SI_2016_Clean4[, xname])
+x<- SI_2016_Clean4[r, xname]
+y<- SI_2016_Clean4[r, 'Turb']
+ry<- !is.na(y)
+
+y<- SI_2016_Clean4[r, 'Turb']
+Turb<-mice.impute.norm.boot(y, ry, x )
+SI_2016_Clean3$Turb[is.na(SI_2016_Clean3$Turb)] <-Turb
+
+y<- SI_2016_Clean4[r, 'CHLugL']
+CHL<-mice.impute.norm.boot(y, ry, x )
+SI_2016_Clean3$CHLugL[is.na(SI_2016_Clean3$CHLugL)] <-CHL
+
+y<- SI_2016_Clean4[r, 'BGAugL']
+BGA<-mice.impute.norm.boot(y, ry, x )
+SI_2016_Clean3$BGAugL[is.na(SI_2016_Clean3$BGAugL)] <-BGA
+
+y<- SI_2016_Clean4[r, 'FDOMqsu']
+FDOM<-mice.impute.norm.boot(y, ry, x )
+SI_2016_Clean3$FDOMqsu[is.na(SI_2016_Clean3$FDOMqsu)] <-FDOM
+
+y<- SI_2016_Clean4[r, 'NO3_mgL']
+NO3<-mice.impute.norm.boot(y, ry, x )
+SI_2016_Clean3$NO3_mgL[is.na(SI_2016_Clean3$NO3_mgL)] <-NO3
+
+ggplot(data= SI_2016_Clean3, aes(x= samp.date.time, y= NO3_mgL)) + geom_line()
+
+SI_2016_Clean6<- SI_2016_Clean3 %>% mutate(date= date(mdy(samp.date)))
+
+##DISCHARGE
+#Bihourly (on the odd hour) (June 1- Oct 15)
+dis_SI_2016 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2016-04-13", endDate = "2016-10-15")
+dis_SI_2016_BiHourly<- dis_SI_2016 %>% filter(!is.na(`X_00060_00000`)) %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour)) 
+dis_SI_2016_BiHourly$hour <- ((dis_SI_2016_BiHourly$`HourDiv2`*2)+1)
+
+md.pattern(dis_SI_2016_BiHourly)
+SI_2016_BiHourly <- left_join(SI_2016_Clean6, dis_SI_2016_BiHourly, by=c("date"="date", "hour"="hour"))
+
+md.pattern(SI_2016_BiHourly)
+write.csv(SI_2016_BiHourly, file="SI2016BiHourly.csv", row.names = FALSE)
+
+```
+
+
+```{r 2015}
+#Missing Data
+#Every hour June 1 (14)-Oct 1 (11), every odd hour Oct 1 (11)- 15 (9)
+#Missing July 26 (13), Aug 21 (6)
+
+
+#Outliers
+#Oct 2, 2015 (13:17) 
+
+md.pattern(SI_2015)
+#2 missing all five
+#one missing nitrate
+SI_NA<- SI_2015%>% filter(is.na(Turb))
+SI_NA
+ggplot(data= SI_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+#Missing data July 31 (11), Sep 3 (12)
+
+SI_2015_Clean <-SI_2015
+
+#Oct 2 (13:17)- Turb outlier
+SI_2015_Clean$Turb[(which(SI_2015_Clean$samp.date.time=="2015-10-02 13:17:00")-2)] <- reassign(SI_2015_Clean, SI_2015_Clean$Turb, "2015-10-02 13:17:00")
+
+#Sept 3 (12:05)
+SI_2015_Clean$Turb[(which(SI_2015_Clean$samp.date.time=="2015-09-03 12:05:00")-4)] <- reassign(SI_2015_Clean, SI_2015_Clean$Turb, "2015-09-03 12:05:00")
+SI_2015_Clean$CHLugL[(which(SI_2015_Clean$samp.date.time=="2015-09-03 12:05:00")-4)] <- reassign(SI_2015_Clean, SI_2015_Clean$CHLugL, "2015-09-03 12:05:00")
+SI_2015_Clean$BGAugL[(which(SI_2015_Clean$samp.date.time=="2015-09-03 12:05:00")-4)] <- reassign(SI_2015_Clean, SI_2015_Clean$BGAugL, "2015-09-03 12:05:00")
+SI_2015_Clean$FDOMqsu[(which(SI_2015_Clean$samp.date.time=="2015-09-03 12:05:00")-4)] <- reassign(SI_2015_Clean, SI_2015_Clean$FDOMqsu, "2015-09-03 12:05:00")
+SI_2015_Clean$NO3_mgL[(which(SI_2015_Clean$samp.date.time=="2015-09-03 12:05:00")-4)] <- reassign(SI_2015_Clean, SI_2015_Clean$NO3_mgL, "2015-09-03 12:05:00")
+
+md.pattern(SI_2015_Clean)
+#July 31 (11:02)- Two other measurements at the 11 hour (don't worry about, remove)
+SI_2015_Clean2<- SI_2015_Clean %>% filter(!is.na(Turb))
+
+#July 7 (13),
+NP072713<- NewPoint(SI_2015_Clean2, "2015-07-27 14:00:00", "7/27/2015", "13:30:00", 7, 27, 13, "2015-07-27 13:30:00")
+NP082106<- NewPoint(SI_2015_Clean2, "2015-08-21 07:00:00", "8/21/2015", "06:30:00", 8, 21, 6, "2015-08-21 06:30:00")
+
+SI_2015_Clean3<-rbind(SI_2015_Clean2, NP072713, NP082106)
+
+SI_2015_Clean3 <- SI_2015_Clean3%>% arrange(samp.date.time) %>% mutate(date= date(mdy(samp.date)))
+
+write.csv(SI_2015_Clean3, file="SI2015IP.csv", row.names = FALSE)
+
+
+##DISCHARGE
+
+#Hourly (June 1 - Sept 30)
+dis_SI_2015 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2015-06-01", endDate = "2015-09-30")
+dis_SI_2015_Hourly<- dis_SI_2015 %>% filter(!is.na(`X_00060_00000`))  %>%
+  mutate( date= date(dateTime),hour= hour(dateTime)) %>% 
+  group_by(date, hour) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+
+md.pattern(dis_SI_2015_Hourly)
+
+SI_2015_Hourly <- left_join(SI_2015_Clean3, dis_SI_2015_Hourly, by=c("date"="date", "hour"="hour"))
+
+SI_2015_Hourly %>%filter(is.na(Discharge))
+
+SI_2015_Hourly<- SI_2015_Hourly %>% filter(!is.na(Discharge))
+write.csv(SI_2015_Hourly, file="SI2015Hourly.csv", row.names = FALSE)
+
+md
+
+#Bihourly (on the odd hour) (June 1- Oct 15)
+dis_SI_2015 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2015-06-01", endDate = "2015-10-16")
+dis_SI_2015_BiHourly<- dis_SI_2015 %>% filter(!is.na(`X_00060_00000`)) %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour)) 
+dis_SI_2015_BiHourly$hour <- ((dis_SI_2015_BiHourly$`HourDiv2`*2)+1)
+  
+
+
+SI_2015_Clean4<- SI_2015_Clean3 %>% 
+  mutate(`HourDiv2`= trunc(hour/2)) %>%
+  group_by(date, HourDiv2) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), month= mean(month), day= mean(day), hour= c(1))
+SI_2015_Clean4$hour <- ((SI_2015_Clean4$`HourDiv2`*2)+1)
+
+SI_2015_BiHourly <- left_join(SI_2015_Clean4, dis_SI_2015_BiHourly, by=c("date"="date", "hour"="hour"))
+
+md.pattern(SI_2015_BiHourly)
+write.csv(SI_2015_BiHourly, file="SI2015BiHourly.csv", row.names = FALSE)
+```
+
+

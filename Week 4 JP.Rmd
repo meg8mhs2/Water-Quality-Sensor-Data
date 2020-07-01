@@ -46,7 +46,7 @@ cyan_abundance <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>%
   group_by(SHEETBAR) %>% 
   summarize(cyan_abund = sum(`TOTAL BV_um3L`))
 phyto <- left_join(phyto,cyan_abundance,by='SHEETBAR')
-phyto %>% mutate(case_when(is.na(cyan_abund) == T ~ 0))
+phyto <- phyto %>% mutate(case_when(is.na(cyan_abund) == T ~ 0))
 # Relative Cyanobacteria Abundance
 phyto <- phyto %>% mutate(rel_cyan = cyan_abund/total_abundance * 100)
 # Cyanobacteria Richness
@@ -54,7 +54,7 @@ cyan_richness <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>%
   count(SHEETBAR)
 phyto <- left_join(phyto,cyan_richness,by='SHEETBAR') %>% 
   rename(cyan_rich=n)
-phyto %>% mutate(case_when(is.na(cyan_rich) == T ~ 0))
+phyto <- phyto %>% mutate(case_when(is.na(cyan_rich) == T ~ 0))
 # Non-Cyanobacteria Abundance
 phyto <- phyto %>% mutate(non_cyan_abund = total_abundance - cyan_abund)
 # Relative Non-Cyanobacteria Abundance
@@ -173,11 +173,14 @@ cyan_pool_6 <- cyan_at_pool(6)
 These six vectors now have the cyanobacteria that were at some point observed at their respective field station. Now to find which cyanobacteria were present at all of the stations.
 
 ```{r cyano species common}
-present_everywhere <- intersect(intersect(intersect(cyan_pool_1,cyan_pool_2), intersect(cyan_pool_3,cyan_pool_4)), intersect(cyan_pool_5,cyan_pool_6))
+present_everywhere <- cyan_pool_1 %>% 
+  intersect(cyan_pool_2) %>% intersect(cyan_pool_3) %>% 
+  intersect(cyan_pool_4) %>% intersect(cyan_pool_5) %>% 
+  intersect(cyan_pool_6)
 print(present_everywhere)
 ```
 
-The above 8 cyanobacteria were observed at all six stations, making them the most common cyanobacteria in the data. The following are the unique cyanobacteria to each field station.
+The above 8 cyanobacteria were observed at all six stations, making them the most common cyanobacteria in the data. I next want to check for the unique cyanobacteria to each field station.
 
 ```{r cyano species unique}
 pool_1_uniq <- setdiff(setdiff(setdiff(setdiff(setdiff(cyan_pool_1,cyan_pool_2), cyan_pool_3), cyan_pool_4), cyan_pool_5), cyan_pool_6)
@@ -188,4 +191,94 @@ pool_5_uniq <- setdiff(setdiff(setdiff(setdiff(setdiff(cyan_pool_5,cyan_pool_2),
 pool_6_uniq <- setdiff(setdiff(setdiff(setdiff(setdiff(cyan_pool_6,cyan_pool_2), cyan_pool_3), cyan_pool_4), cyan_pool_5), cyan_pool_1)
 ```
 
-Somewhat surprisingly, none of the six pool had unique cyanobacteria present. That is, every cyanobacteria that was observed was present in at least two of the pools. Additionally, because the highest number of unique cyanobacteria observed at a given pool was 16 and 8 were common to all stations, the past observation that more general models are stronger than river/station specific models may hold true in future work as well. 
+Somewhat surprisingly, though, none of the six pool had unique cyanobacteria present. That is, every cyanobacteria that was observed was present in at least two of the pools. Additionally, because the highest number of unique cyanobacteria observed at a given pool was 16 and 8 were common to all stations, the past observation that more general models are stronger than river/station specific models may hold true in future work as well. 
+
+### Question 2
+
+"How has the relative abundance of cyanobacteria changed through time in different pools?"
+```{r cyano relative abundance}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,rel_cyan)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  geom_smooth(method=lm)
+```
+
+Stations 1 and 2 had negative overall trends even though they experienced all time peaks in the later years. The other stations had relatively stable trends, with some peaks in stations 3, 4, and 6. This seems to suggest that in all, Cyanobacteria were not dominating the phytoplankton communities. Now to look at the eight most common cyanobacteria genera/species.
+
+```{r cyano common relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+common_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(GENUS %in% present_everywhere) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(common_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(common_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_common_cyan = common_cyan_abund/total_abundance * 100)
+```
+
+Now that there is a measure for the biovolume made up by the most common cyanobacteria, let's graph it.
+
+```{r cyano common relative abundance 2}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,rel_common_cyan)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  geom_smooth(method=lm)
+```
+
+The trends are very much similar to the overal cyanobacteria trends I noticed before, but slightly less exaggerated because the peaks in relative abundance are lower (fewer genera to count). It is likely because these common cyanobacteria make up so much of the cyanobacteria populations observed. To see if that's the case, I'll quickly calculate the percentage of Cyanobacteria observations that belong to one of these eight genera/species.
+
+```{r cyano common percent}
+common_percent <- (phyto %>% 
+                     filter(GENUS %in% present_everywhere) %>% 
+                     count() / phyto %>% 
+                     filter(DIVISION == 'Cyanobacteria') %>% 
+                     count()
+                     )$n
+```
+
+Since 
+```{r}
+print(common_percent * 100)
+``` 
+% of the Cyanobacteria observations are one of the eight most common genera/taxa, this explains why the trends are so similar. It may be more telling to see what trends emerge for the less common cyanobacteria.
+
+```{r cyano uncommon relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+uncommon_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(DIVISION == 'Cyanobacteria') %>% 
+  filter(!(GENUS %in% present_everywhere)) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(uncommon_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(uncommon_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_uncommon_cyan = uncommon_cyan_abund/total_abundance * 100)
+```
+
+And then graphing it.
+
+```{r cyano uncommon relative abundance 2}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,rel_uncommon_cyan)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  geom_smooth(method=lm)
+```
+
+Stations 5 and 6 had few observations of the uncommon cyanobacteria, and so I'm hesitant to draw conclusions from those two graphs. That said, stations 1 and 3 had relatively neutral trends, with some variation but no peaks above 25% of the total biovolume. Station 4 had a negative trend but with fewer observations, and likely would have a more neutral trend if the one observation of 25% was removed. Station 2, however, had a slightly positive trend with several higher values, and so conditions in station 2 may be more favorable for these less common cyanobacteria. Looking to see which genera/species are thriving at station 2,
+
+```{r uncommon cyano station 2}
+uncommon_station_2 <- (phyto %>% 
+  filter(FLDNUM == 2) %>% 
+  filter(!(GENUS %in% present_everywhere)) %>% 
+  filter(DIVISION == 'Cyanobacteria'))$GENUS %>% 
+  unique()
+```
+
+
+We know now that these less common cyanobacteria are 
+```{r}
+print(uncommon_station_2)
+```
+.
