@@ -1,0 +1,170 @@
+###Environmental Factors vs Time
+```{r Physical: Turb, Vel,Temp Separated by year & FLDNUM}
+#Selection of Physical & Fieldnum
+  phyto_dateTVT<- select(phyto_data,year,FLDNUM, TURB, VEL, TEMP, DATE) %>% 
+    #na.omit() %>% 
+    filter(1996<=year&year<=2012)
+  phyto_dateTVT
+ #________________________________________________________________________ 
+#Total Turb over time
+  phyto_T<-ggplot(phyto_dateTVT,aes(DATE,TURB))+
+    geom_point()+ ggtitle("Turbidity 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    ylab("Turbidity (Nephelometric Turbidity Units (NTU))") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_T
+#Separate by FieldNum
+  phyto_fldT<-ggplot(phyto_dateTVT,aes(DATE,TURB))+
+    geom_point()+ ggtitle("Turbidity 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    ylab("Turbidity (Nephelometric Turbidity Units (NTU))") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_fldT
+#________________________________________________________________________  
+#Total Velocity over time
+  phyto_TV<-ggplot(phyto_dateTVT,aes(DATE,VEL))+
+    geom_point()+ ggtitle("Velocity of Water Current 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Velocity (m/s)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_TV
+#Separate by FieldNum
+  phyto_fldV<-ggplot(phyto_dateTVT,aes(DATE,VEL))+
+    geom_point()+ ggtitle("Velocity of Water Current 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Velocity (m/s)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_fldV
+#________________________________________________________________________  
+#Total Temp over time
+  phyto_Tp<-ggplot(phyto_dateTVT,aes(DATE,TEMP))+
+    geom_point()+ ggtitle("Water Temperature 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Temperature (C)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_Tp
+#Separate by FieldNum
+  phyto_fldTp<-ggplot(phyto_dateTVT,aes(DATE,TEMP))+
+    geom_point()+ ggtitle("Water Temperature 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Temperature (C)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_fldTp
+
+```
+```{r Chemical: TN/TP/SI Separated by year & FLDNUM}
+#Selection of Fieldnum and Chemicals
+  phyto_dateNPS<- select(phyto_data,year, DATE,FLDNUM, TN,TP, SI) %>% 
+    na.omit() %>% 
+    filter(1996<=year&year<=2012)
+  phyto_dateNPS
+#________________________________________________________________________
+#Total TN  over time
+  phyto_yrN<-ggplot(phyto_dateNPS,aes(DATE,TN))+
+    geom_point()+ ggtitle("Nitrogen 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Nitrogen (mg/L)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_yrN
+#Separate by FieldNum
+  phyto_dailyN<-ggplot(phyto_dateNPS,aes(DATE,TN))+
+    geom_point()+ ggtitle("Nitrogen 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Nitrogen (mg/L)") +xlab("Year")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_dailyN
+#________________________________________________________________________
+  #Total TP  over time
+    phyto_yrP<-ggplot(phyto_dateNPS,aes(DATE,TN))+
+      geom_point()+ ggtitle("Phosphorus 1996-2012 Overall")+
+      theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Phosphorus (mg/L)") +xlab("Year")+
+      theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+    phyto_yrP
+  #Separate by FieldNum
+    phyto_dailyP<-ggplot(phyto_dateNPS,aes(DATE,TP))+
+      geom_point()+ ggtitle("Phosphorus 1996-2012 by Field Station")+
+      theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Phosphorus (mg/L)") +xlab("Year")+
+      theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+    phyto_dailyP
+#________________________________________________________________________    
+  #Total SI  over time
+    phyto_yrS<-ggplot(phyto_dateNPS,aes(DATE,SI))+
+      geom_point()+ ggtitle("Silica 1996-2012 Overall")+
+      theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Silica (mg/L)") +xlab("Year")+
+      theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+    phyto_yrS
+  #Separate by FieldNum
+    phyto_dailyS<-ggplot(phyto_dateNPS,aes(DATE,SI))+
+      geom_point()+ ggtitle("Silica 1996-2012 by Field Station")+
+      theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + ylab("Silica (mg/L)") +xlab("Year")+
+      theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+    phyto_dailyS
+```
+###Environmental Factors vs Abundance
+```{r Abundance}
+phyto_abn<- select(phyto_data,BIOMASS,BIOVOLUME, DIVISION, FLDNUM, TURB,VEL,TEMP,DATE,year,TN,TP,SI) 
+#Plotting the Biovolume accross all divisions
+phyto_abn %>% 
+  ggplot(aes( x=BIOMASS,y=DIVISION))+
+  geom_bar(stat="identity")+theme_fivethirtyeight()+ theme(axis.title=element_text())
+
+#Sectioning out Cyanobacteria
+phyto_cyn<-phyto_abn %>% filter(DIVISION=='Cyanobacteria')
+phyto_cyn %>% 
+  ggplot(aes( y=BIOMASS,x=FLDNUM))+
+  geom_point(stat="identity")+theme_fivethirtyeight()+ theme(axis.title=element_text())
+
+```
+
+```{r Abundance v Physical: Turb, Vel,Temp Separated by year & FLDNUM}
+#Selection of Physical & Fieldnum
+  phyto_cynTVT<- select(phyto_cyn,year,FLDNUM, TURB, VEL, TEMP, BIOVOLUME) %>% 
+    filter(1996<=year&year<=2012)
+  phyto_cynTVT
+#________________________________________________________________________ 
+#Total Turb over time
+  phyto_cT<-ggplot(phyto_cynTVT,aes(TURB,BIOVOLUME))+
+    geom_point()+ ggtitle("Turbidity v Biovolume 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22))+
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Turbidity (Nephelometric Turbidity Units (NTU))") +ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_cT
+#Separate by FieldNum
+  phyto_cfldT<-ggplot(phyto_cynTVT,aes(TURB,BIOVOLUME))+
+    geom_point()+ ggtitle("Turbidity v Biovolume 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Turbidity (Nephelometric Turbidity Units (NTU))") +ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_cfldT
+#________________________________________________________________________  
+#Total Velocity over time
+  phyto_cV<-ggplot(phyto_cynTVT,aes(VEL,BIOVOLUME))+
+    geom_point()+ ggtitle("Velocity of Water Current 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) +
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Velocity (m/s)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_cV
+#Separate by FieldNum
+  phyto_cfldV<-ggplot(phyto_cynTVT,aes(VEL,BIOVOLUME))+
+    geom_point()+ ggtitle("Velocity of Water Current 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Velocity (m/s)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_cfldV
+#________________________________________________________________________  
+#Total Temp over time
+   phyto_cTp<-ggplot(phyto_cynTVT,aes(TEMP,BIOVOLUME))+
+    geom_point()+ ggtitle("Water Temperature 1996-2012 Overall")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Temperature (C)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) 
+  phyto_cTp
+#Separate by FieldNum
+  phyto_cfldTp<-ggplot(phyto_cynTVT,aes(TEMP,BIOVOLUME))+
+    geom_point()+ ggtitle("Water Temperature 1996-2012 by Field Station")+
+    theme(plot.title = element_text(lineheight=.8, face="bold",size = 22)) + 
+    theme(axis.title.x=element_text(size=16),axis.title.y=element_text(size=16)) +
+    xlab("Temperature (C)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")+
+    theme_fivethirtyeight()+ theme(axis.title=element_text()) + facet_wrap(~FLDNUM,ncol=3)
+  phyto_cfldTp
+  
+```
