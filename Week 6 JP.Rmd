@@ -1,0 +1,280 @@
+---
+title: "Week 5"
+author: "James Pack"
+date: "6/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+start <- now()
+```
+
+```{r data prep, include = F}
+phytos_9606 <- read_csv('Phytos_1996-2006.csv')
+phytos_0812 <- read_csv('Phytos_2008-2012.csv')
+phyto_info <- read_csv('Phyto_info_WQdata.csv')
+
+# Combining data from all time periods
+phytos_whole <- phytos_9606 %>% bind_rows(phytos_0812)
+
+# Adding water quality data, joined by SHEETBAR (ID) of sample
+phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
+
+# Cleaning the dates
+phyto <- phyto %>% mutate(DATE=mdy(DATE))
+```
+
+## Community Metrics
+
+Adding in measures for Total Abundance, Richness, Relative Cyanobacteria Abundance, Cyanobacteria Richness, and Non-Cyanobacteria Richness. Need to edit these so that NAs are given 0s
+
+```{r adding metrics}
+# Richness
+phyto <- left_join(phyto,phyto %>% count(SHEETBAR),by='SHEETBAR') %>% 
+  rename(tot_rich=n)
+# Total Abundance
+total <- phyto %>% group_by(SHEETBAR) %>% 
+  summarize(total_abundance = sum(`TOTAL BV_um3L`))
+phyto <- left_join(phyto,total,by='SHEETBAR')
+# Cyanobacteria Abundance
+cyan_abundance <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- left_join(phyto,cyan_abundance,by='SHEETBAR')
+phyto <- phyto %>% mutate(case_when(is.na(cyan_abund) == T ~ 0))
+# Relative Cyanobacteria Abundance
+phyto <- phyto %>% mutate(rel_cyan = cyan_abund/total_abundance * 100)
+# Cyanobacteria Richness
+cyan_richness <- phyto %>% filter(DIVISION == 'Cyanobacteria') %>% 
+  count(SHEETBAR)
+phyto <- left_join(phyto,cyan_richness,by='SHEETBAR') %>% 
+  rename(cyan_rich=n)
+phyto <- phyto %>% mutate(case_when(is.na(cyan_rich) == T ~ 0))
+# Non-Cyanobacteria Abundance
+phyto <- phyto %>% mutate(non_cyan_abund = total_abundance - cyan_abund)
+# Relative Non-Cyanobacteria Abundance
+phyto <- phyto %>% 
+  mutate(rel_non_cyan_abund = non_cyan_abund/total_abundance * 100)
+# Non-Cyanobacteria Richness
+phyto <- phyto %>% mutate(non_cyan_rich = tot_rich - cyan_rich)
+```
+
+## Cyanobacteria
+
+```{r cyano species}
+cyan_at_pool <- function(pool_num){
+  return(unique((phyto %>% filter(DIVISION == 'Cyanobacteria' & FLDNUM == pool_num))$GENUS))
+}
+cyan_pool_1 <- cyan_at_pool(1)
+cyan_pool_2 <- cyan_at_pool(2)
+cyan_pool_3 <- cyan_at_pool(3)
+cyan_pool_4 <- cyan_at_pool(4)
+cyan_pool_5 <- cyan_at_pool(5)
+cyan_pool_6 <- cyan_at_pool(6)
+all_pools <- unique((phyto %>% filter(DIVISION == 'Cyanobacteria'))$GENUS)
+```
+
+```{r cyano species common}
+present_everywhere <- cyan_pool_1 %>% 
+  intersect(cyan_pool_2) %>% intersect(cyan_pool_3) %>% 
+  intersect(cyan_pool_4) %>% intersect(cyan_pool_5) %>% 
+  intersect(cyan_pool_6)
+print(present_everywhere)
+```
+
+```{r classifying cyano}
+harmful <- c('Aphanizomenon sp.','Dolichospermum sp.','Microcystis aeruginosa', 'Planktothrix sp.', 'Pseudanabaena limnetica', 'Merismopedia tenuissima', 'Merismopedia punctata', 'Merismopedia tenuis', 'Aphanocapsa delicatissima', 'Aphanocapsa sp.', 'Raphidiopsis curvata', 'Woronichinia karelica') #cyanotoxins, Raphidiopsis found at https://onlinelibrary.wiley.com/doi/abs/10.1046/j.1529-8817.2001.01075.x, Woronichinia (potentially toxic) found at https://www.inaturalist.org/guide_taxa/700578
+n_fixer <- c('Aphanizomenon sp.','Dolichospermum sp.','Planktothrix sp.') #heterocystous
+like_algae <- c('Chroococcus microscopicus','Chroococcus sp.') #according to this source, like eukaryotic algaes https://micro.magnet.fsu.edu/featuredmicroscopist/vanegmond/chroococcussmall.html
+oscillatoriales <- c('Planktolyngbya limnetica', 'Planktolyngbya contorta') #oscillatoriales order, https://www.inaturalist.org/guide_taxa/751676 
+thick_wall <- c('Dolichospermum sp.','Cylindrospermopsis raciborskii') #akinete
+```
+
+```{r cyano common relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+common_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(GENUS %in% present_everywhere) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(common_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(common_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_common_cyan = common_cyan_abund/total_abundance * 100)
+```
+
+```{r cyano common percent}
+common_percent <- (phyto %>% 
+                     filter(GENUS %in% present_everywhere) %>% 
+                     count() / phyto %>% 
+                     filter(DIVISION == 'Cyanobacteria') %>% 
+                     count()
+                     )$n
+```
+
+```{r cyano uncommon relative abundance}
+# First calculate the biovolume trends for these common cyanobacteria
+uncommon_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(DIVISION == 'Cyanobacteria') %>% 
+  filter(!(GENUS %in% present_everywhere)) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(uncommon_cyan_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% left_join(uncommon_abund,by='SHEETBAR')
+# Add in the relative abundance of the common
+phyto <- phyto %>% mutate(rel_uncommon_cyan = uncommon_cyan_abund/total_abundance * 100)
+```
+
+```{r harmful cyano relative abundance}
+harmful_abund <- phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  filter(GENUS %in% harmful) %>% 
+  group_by(SHEETBAR) %>% 
+  summarize(harmful_abund = sum(`TOTAL BV_um3L`))
+phyto <- phyto %>% 
+  left_join(harmful_abund,by='SHEETBAR')
+phyto <- phyto %>% mutate(rel_harmful_cyan = harmful_abund/total_abundance * 100)
+```
+
+## PCA of Environmental Factors
+
+```{r selecting nutrient factors}
+nutrients <- phyto_info %>% 
+  select(FLDNUM,DO,SRP,TP,TN,NOX,SI) %>% 
+  na.omit() # Using na.omit, lost 4 records
+# Using just the nutrients here to separate the field stations
+cor(nutrients)
+nutrients.pc <- princomp(nutrients[,-c(1,3,6)],cor=T,scores=T)
+summary(nutrients.pc,loadings=T)
+# scree plot
+plot(1:(length(nutrients.pc$sdev)),  (nutrients.pc$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+
+# plotting with FLDNUM labels for the first 3 components (92.6% explained)
+## 1 - 2
+plot(nutrients.pc$scores[,2]~nutrients.pc$scores[,1],
+     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+text(nutrients.pc$scores[,1], nutrients.pc$scores[,2],
+     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+## 1 - 3
+plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,1],
+     xlab="PC 1", ylab="PC 3", type='n', lwd=2)
+text(nutrients.pc$scores[,1], nutrients.pc$scores[,3],
+     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+## 2 - 3
+plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,2],
+     xlab="PC 2", ylab="PC 3", type='n', lwd=2)
+text(nutrients.pc$scores[,2], nutrients.pc$scores[,3],
+     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+```
+
+Eigenvalue Size < 1 for 3 components, so use PC 1, 2, & 3.
+Component 1 shows 42% of variation. High dissolved oxygen values and low total phosphorous, total nitrogen, and silica make up observations with high scores for Component 1.
+Component 2 shows another 27% of variation (69% total). High total phosphorous and low silica are the major characteristics, with a slight lean towards low total nitrogen.
+Component 3 shows an additional 23% of variation (92% total). High total nitrogen and dissolved oxygen are characteristics, while low silica is also considered. 
+
+Comparing Components 1 & 2, stations 5 & 6 were mostly low scores on PC1 and high scores on PC2. Station 1 had a wide spread of PC1 scores but relatively low PC2 scores, while stations 2, 3, & 4 had varied scores. Stations 1 through 4 seemd to have a positive relationship between PC1 and PC2 scores, while stations 5 and 6 had a less clear negative relationship between PC1 and PC2. 
+
+Comparing Components 1 & 3, stations 5 & 6 were again separated to the lower scores for PC1, and no real trend emerged from PC3 here. This suggests that high total nitrogen distinguishes the stations, as a high total nitrogen would lower the PC1 score and raise the PC3 score.
+
+Comparing Components 2 & 3, station 6 is clearly on its own with high PC2 scores and varied PC3 scores, while station 1 is on the other end of the spectrum with low PC2 and low PC3 scores. The other 4 stations are unclear and more varied in the middle of stations 1 and 6, so a trend is unclear. However, it suggests that between station 1 and 6, the distinguishing characteristics 
+
+
+```{r selecting physical factors}
+physical <- phyto_info %>% 
+  select(FLDNUM,TEMP,PH,TURB) %>% 
+  na.omit() # Lost 1 observation
+# Using just the physical factors here to separate the field stations
+cor(physical)
+physical.pc <- princomp(physical[,-c(1)],cor=T,scores=T)
+summary(physical.pc,loadings=T)
+# scree plot
+plot(1:(length(physical.pc$sdev)),  (physical.pc$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+
+# plotting with FLDNUM labels across components
+## 1 - 2
+plot(physical.pc$scores[,2]~physical.pc$scores[,1],
+     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+text(physical.pc$scores[,1], physical.pc$scores[,2],
+     labels=physical$FLDNUM, cex=0.7, lwd=2)
+## 1 - 3
+plot(physical.pc$scores[,3]~physical.pc$scores[,1],
+     xlab="PC 1", ylab="PC 3", type='n', lwd=2)
+text(physical.pc$scores[,1], physical.pc$scores[,3],
+     labels=physical$FLDNUM, cex=0.7, lwd=2)
+## 2 - 3
+plot(physical.pc$scores[,3]~physical.pc$scores[,2],
+     xlab="PC 2", ylab="PC 3", type='n', lwd=2)
+text(physical.pc$scores[,2], physical.pc$scores[,3],
+     labels=physical$FLDNUM, cex=0.7, lwd=2)
+```
+
+```{r selecting all environmental factors}
+enviro <- phyto_info %>% 
+  select(FLDNUM,DO,SRP,TP,TN,NOX,SI,TEMP,PH,TURB) %>% 
+  na.omit() # 4 observations removed here
+# Looking at relationships
+cor(enviro)
+# PCA
+enviro.pc <- princomp(enviro[,-c(1)],core=T,scores=T)
+summary(enviro.pc, loadings=T)
+# scree plot
+plot(1:(length(enviro.pc$sdev)),  (enviro.pc$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+# Plotting PC 1 & 2, explains 99.6% of variance
+plot(enviro.pc$scores[,2]~enviro.pc$scores[,1],
+     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+text(enviro.pc$scores[,1], enviro.pc$scores[,2],
+     labels=enviro$FLDNUM, cex=0.7, lwd=2)
+```
+
+```{r looking at station 5 turbidity}
+phyto_info %>% filter(FLDNUM == 5) %>% 
+  ggplot(aes(DATE,TURB)) +
+  geom_point()
+phyto_info %>% filter(FLDNUM == 1) %>% 
+  ggplot(aes(DATE,TURB)) +
+  geom_point()
+```
+
+## Tracking Harmful Cyanobacteria on Environmental Factors & Field Station
+
+```{r nitrogen/phosphorous ratio}
+np_ratio <- phyto_info %>% select(c(SHEETBAR,TN,TP)) %>% na.omit() %>% 
+  mutate(np_ratio = TN/TP) %>%  # four observations missing here
+  select(c(SHEETBAR,np_ratio))
+phyto <- phyto %>% left_join(np_ratio,by='SHEETBAR')
+```
+
+```{r graphing np ratio over time}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(DATE,np_ratio)) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3)
+```
+```{r n:p and cyanobacteria plots}
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(np_ratio,log(harmful_abund))) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  geom_smooth(method=lm)
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(log(np_ratio),log(harmful_abund))) +
+  geom_point() +
+  facet_wrap(~FLDNUM,nrow=3) +
+  geom_smooth(method=lm)
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(np_ratio,log(harmful_abund))) +
+  geom_point() +
+  geom_smooth(method=lm)
+phyto %>% filter(is.na(FLDNUM) == F) %>% 
+  ggplot(aes(np_ratio,log(total_abundance))) +
+  geom_point() +
+  geom_smooth(method=lm)
+```
+  
+
+
