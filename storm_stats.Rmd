@@ -1,0 +1,307 @@
+---
+title: "Storm stats"
+author: "Taryn Waite"
+date: "6/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+WQ_hourly_discharge <- read.csv("WQ_hourly_discharge.csv")
+```
+
+This document deals with calculating various storm statistics/characteristics. Given data for the duration of a storm, the goal is to be able to produce information such as storm duration, maximum discharge, change in discharge, antecedent conditions, etc. 
+
+First, we'll calculate storm duration. We might need to know both the length of the entire storm (given by the start and end dates) and the length of the "loop" portion of the storm (where there are matching discharge values for the rising and falling limbs, which is the portion for which we calculate HI). Here are functions for both of these:
+```{r storm length stats}
+# given data from the duration of the storm,
+# returns the length of the storm in days
+storm.length <- function(data, startDate, endDate){
+  return(as.numeric(ymd(endDate)-ymd(startDate)))
+}
+
+# returns the length of the portion of the storm
+# for which HI could be calculated (overlapping limbs)
+storm.length.loop <- function(data){
+  # find minimum discharge rows for rising and falling limbs
+  mins <- data %>% filter(limb != "peak") %>% group_by(limb) %>% 
+    summarise(min = min(hourlyDischarge))
+  # the larger of the two is where the intervals start
+  minDisLoop <- max(mins$min)
+  # subset data to just the loop
+  loop <- data %>% filter(hourlyDischarge >= minDisLoop)
+  # get start and end dates for the loop
+  start <- loop %>% summarize(start = min(dateTime))
+  end <- loop %>% summarize(end = max(dateTime))
+  return(as.numeric(end-start))
+}
+```
+
+Next, we need a function to calculate the total change in discharge from the start of the storm to the peak. Here are 2 versions of this function. The first simply returns the change in discharge from the start of the storm (the earliest date in the storm time series) to the storm peak. The second returns the change in discharge during the loop section of the event (as described above).
+**NOTE:** both of these functions use the raw data, not the smoothed data. We may want to change this later -- I'm not sure which one it makes more sense to use.
+```{r discharge stats}
+# returns the change in discharge (raw data)
+# from the start of the event to the peak
+storm.dis.change <- function(data){
+  start <- (data %>% slice_min(dateTime))[["hourlyDischarge"]]
+  peak <- (data %>% slice_max(hourlyDischarge))[["hourlyDischarge"]]
+  return(as.numeric(peak)-as.numeric(start))
+}
+
+# returns the change in discharge (raw data)
+# from the start of the overlapping rise/fall discharge
+# (where the HI begins to be calculated) to the peak
+storm.dis.change.loop <- function(data){
+  # find minimum discharge values for rising and falling limbs
+  mins <- data %>% filter(limb != "peak") %>% group_by(limb) %>% 
+    summarise(min = min(hourlyDischarge))
+  # the larger of the two is where the intervals start
+  start <- max(mins$min)
+  peak <- (data %>% slice_max(hourlyDischarge))[["hourlyDischarge"]]
+  return(as.numeric(peak) - as.numeric(start))
+}
+
+# returns the maximum discharge value from the event
+storm.max.dis <- function(data){
+  maxDis <- data %>% summarise(maxDis = max(hourlyDischarge))
+  return(as.numeric(maxDis))
+}
+```
+
+It might also be interesting to see if temperature impacts c-q relationships or seasonal patterns. Here is a function to calculate the average water temperature during the event:
+```{r temperature stats}
+storm.avg.temp <- function(data){
+  return(as.numeric(data %>% summarise(mean = mean(Temp))))
+}
+```
+
+Now that we have ways of calculating event statistics, as well as HI and slope for the different constituents, we'll want to have all of the events in one dataframe with their start dates, end dates, storm statistics, and HI/slope values.
+
+```{r function for adding events}
+events <- tibble(startDate = Date(), endDate = Date(), 
+                 length = numeric(), length_loop = numeric(),
+                 dis_change = numeric(), dis_change_loop = numeric(),
+                 max_dis = numeric(), avg_temp = numeric(),
+                 HI_turb = numeric(), Slope_turb = numeric(),
+                 HI_n03 = numeric(), Slope_n03 = numeric(),
+                 HI_chl = numeric(), Slope_chl = numeric(),
+                 HI_fdom = numeric(), Slope_fdom = numeric())
+
+# adds a high-discharge event to the events tibble,
+# given the data, start date, end date, and number of
+# observations per day
+add.event <- function(data, start, end, freq){
+  # subset the data to include just the event
+  subset <- data %>% 
+    filter(dateTime >= ymd(start) & dateTime <= ymd(end)) %>% 
+    filter(site == "MC")
+  # add rising or falling limb column
+  peakDate <- (subset %>% slice_max(hourlyDischarge))[["dateTime"]]
+  # RL if before peakDate, FL if after, peak if on peakDate
+  subset <- subset %>% 
+    mutate(limb = case_when(dateTime < peakDate ~ "RL",
+                            dateTime > peakDate ~ "FL",
+                            T ~ "peak"))
+  turb <- storm_cq(data, start, end, "Turb", 20, freq)
+  n03 <- storm_cq(data, start, end, "NO3_mgL", 20, freq)
+  chl <- storm_cq(data, start, end, "CHLugL", 20, freq)
+  fdom <- storm_cq(data, start, end, "FDOMqsu", 20, freq)
+  return(events %>% add_row(startDate = ymd(start), endDate = ymd(end),
+                     length = as.numeric(ymd(end) - ymd(start)), 
+                     length_loop = storm.length.loop(subset),
+                     dis_change = storm.dis.change(subset),
+                     dis_change_loop = storm.dis.change.loop(subset),
+                     max_dis = storm.max.dis(subset),
+                     avg_temp = storm.avg.temp(subset),
+                     HI_turb = turb[[2]], Slope_turb = turb[[3]],
+                     HI_n03 = n03[[2]], Slope_n03 = n03[[3]],
+                     HI_chl = chl[[2]], Slope_chl = chl[[3]],
+                     HI_fdom = fdom[[2]], Slope_fdom = fdom[[3]]))
+}
+```
+
+```{r adding events}
+# initialize the tibble
+events <- tibble(startDate = Date(), endDate = Date(), 
+                 length = numeric(), length_loop = numeric(),
+                 dis_change = numeric(), dis_change_loop = numeric(),
+                 max_dis = numeric(), avg_temp = numeric(),
+                 HI_turb = numeric(), Slope_turb = numeric(),
+                 HI_n03 = numeric(), Slope_n03 = numeric(),
+                 HI_chl = numeric(), Slope_chl = numeric(),
+                 HI_fdom = numeric(), Slope_fdom = numeric())
+
+# add events -- this takes a long time to run 
+events <- add.event(WQ_hourly_discharge, "2016-04-25", "2016-05-24", 12)
+events <- add.event(WQ_hourly_discharge, "2016-07-13", "2016-08-10", 12)
+events <- add.event(WQ_hourly_discharge, "2016-06-01", "2016-06-14", 12)
+events <- add.event(WQ_hourly_discharge, "2016-08-10", "2016-09-05", 12)
+events <- add.event(WQ_hourly_discharge, "2016-09-06", "2016-09-20", 12)
+events <- add.event(WQ_hourly_discharge, "2016-09-20", "2016-10-15", 12)
+events <- add.event(WQ_hourly_discharge, "2017-06-14", "2017-06-28", 12)
+events <- add.event(WQ_hourly_discharge, "2017-07-19", "2017-07-25", 24)
+events <- add.event(WQ_hourly_discharge, "2017-07-26", "2017-07-30", 24)
+events <- add.event(WQ_hourly_discharge, "2017-08-06", "2017-08-13", 24)
+events <- add.event(WQ_hourly_discharge, "2017-09-20", "2017-09-24", 24)
+events <- add.event(WQ_hourly_discharge, "2018-06-15", "2018-07-31", 12)
+events <- add.event(WQ_hourly_discharge, "2015-07-06", "2015-07-28", 24)
+events <- add.event(WQ_hourly_discharge, "2015-08-18", "2015-09-04", 24)
+events <- add.event(WQ_hourly_discharge, "2015-09-17", "2015-09-24", 24)
+events <- add.event(WQ_hourly_discharge, "2015-09-09", "2015-09-17", 24)
+events <- add.event(WQ_hourly_discharge, "2017-08-16", "2017-09-17", 24)
+events <- add.event(WQ_hourly_discharge, "2018-09-03", "2018-09-15", 12)
+
+#write.csv(events, "data/events.csv")
+
+# get rid of the duplicate rows
+# (for some reason, some of the events were added multiple times)
+eventsUnique <- distinct(events)
+```
+
+Below, we reshape the data so that there are 4 rows for each event (one for each constituent). This makes plotting easier, so that each constituent doesn't have to be plotted separately. We also add columns for the direction of hysteresis (clockwise or counterclockwise) and slope (flushing or dilution). In Aguilera and Melack (2018), they classify clockwise hysteresis as HI >= 0.05, counterclockwise hysteresis as HI <= -0.05, flushing as $\Delta C$ >= 0.1, and dilution as $\Delta C$ <= 0.1. For now, I'm going to use 0.05 as the limit for flushing and dilution.
+
+```{r reshaping the data}
+eventsReshaped <- eventsUnique %>% 
+  gather(key, value, -c(startDate, endDate, length, length_loop,
+                        dis_change, dis_change_loop, max_dis, avg_temp)) %>% 
+  separate(key, c("measure", "var"), "_") %>% 
+  spread(measure, value)
+
+# add columns for directions of hysteresis and slope
+eventsFinal <- eventsReshaped %>% 
+  mutate(H_dir = case_when(HI >= 0.05 ~ "clockwise",
+                           HI <= -0.05 ~ "counter-clockwise", T ~ "none"),
+         slope_dir = case_when(Slope >= 0.05 ~ "flushing",
+                               Slope <= -0.05 ~ "dilution", T ~ "constant"))
+# one event (starting 9/9/15) had a value >1 for fdom slope because of negative
+# values at the beginning-- might be best to take out the whole fdom row for
+# this event because the data jumps from negatives to 100 (the issue we've been 
+# looking at for the time series)
+eventsFinal2 <- eventsFinal[-70,]
+```
+
+## Data exploration
+
+Plotting the data in a few different ways:
+```{r plotting exploration}
+# scatter plot of HI (x-axis) and slope (y-axis) for each storm
+# with each constituent plotted separately
+eventsFinal2 %>% 
+  ggplot(aes(x = HI, y = Slope)) +
+  geom_hline(yintercept=0, linetype="dashed", color = "red") +
+  geom_vline(xintercept=0, linetype="dashed", color = "red") +
+  geom_point() + xlim(-1, 1) + ylim(-1, 1) +
+  facet_wrap(~var)
+
+# looking at each storm individually
+eventsFinal2 %>% 
+  ggplot(aes(x = HI, y = Slope, col = var)) +
+  geom_hline(yintercept=0, linetype="dashed", color = "black") +
+  geom_vline(xintercept=0, linetype="dashed", color = "black") +
+  geom_point() + xlim(-1, 1) + ylim(-1, 1) +
+  facet_wrap(~as.factor(startDate)) +
+  scale_color_brewer(palette = "Dark2")
+
+# violin plots of HI and slope for the constituents
+eventsFinal2 %>% 
+  ggplot(aes(x = var, y = HI)) +
+  geom_violin() + ylim(-1, 1) +
+  geom_hline(yintercept = 0, linetype="dashed", color = "red")
+
+eventsFinal2 %>% 
+  ggplot(aes(x = var, y = Slope)) +
+  geom_violin() + ylim(-1, 1) +
+  geom_hline(yintercept = 0, linetype="dashed", color = "red")
+
+# bar plots of hysteresis direction and slope for each constituent
+eventsFinal2 %>% 
+  ggplot(aes(x = var, fill = H_dir)) +
+  geom_bar(position = "dodge") +
+  scale_fill_brewer(palette = "Paired")
+
+# need to reorder the slope directions
+eventsFinal2$slope_dir <- factor(eventsFinal2$slope_dir, levels = c("flushing", "dilution", "constant"))
+eventsFinal2 %>% 
+  ggplot(aes(x = var, fill = slope_dir)) +
+  geom_bar(position = "dodge") +
+  scale_fill_brewer(palette = "Paired")
+
+
+
+```
+
+Clustering with just hysteresis index and slope:
+```{r clusters with hi and slope}
+turbDat <- eventsFinal2 %>% filter(var == "turb")
+hi_slope_dist_turb <- dist(turbDat[, c(10,11)])
+hi_slope_complete_turb <- hclust(hi_slope_dist_turb, method = "complete")
+plot(hi_slope_complete_turb, labels = turbDat$startDate)
+hi_slope_turb_3 <- cutree(hi_slope_complete_turb, k = 3)
+
+plot(x = turbDat$HI, y = turbDat$Slope, col = hi_slope_turb_3, pch = 20)
+abline( h = 0, lty = 2, col = "red") ; abline(v = 0, lty = 2, col = "red")
+
+
+n03Dat <- eventsFinal2 %>% filter(var == "n03")
+hi_slope_dist_n03 <- dist(n03Dat[, c(10,11)])
+hi_slope_complete_n03 <- hclust(hi_slope_dist_n03, method = "single")
+plot(hi_slope_complete_n03, labels = n03Dat$startDate)
+hi_slope_n03_2 <- cutree(hi_slope_complete_n03, k = 2)
+
+plot(x = n03Dat$HI, y = n03Dat$Slope, col = hi_slope_n03_2, pch = 20)
+abline( h = 0, lty = 2, col = "red") ; abline(v = 0, lty = 2, col = "red")
+
+
+chlDat <- eventsFinal2 %>% filter(var == "chl")
+hi_slope_dist_chl <- dist(chlDat[, c(10,11)])
+hi_slope_complete_chl <- hclust(hi_slope_dist_chl, method = "single")
+plot(hi_slope_complete_chl, labels = chlDat$startDate)
+hi_slope_chl_3 <- cutree(hi_slope_complete_chl, k = 3)
+
+plot(x = chlDat$HI, y = chlDat$Slope, col = hi_slope_chl_3, pch = 20)
+abline( h = 0, lty = 2, col = "red") ; abline(v = 0, lty = 2, col = "red")
+
+
+fdomDat <- eventsFinal2 %>% filter(var == "fdom")
+hi_slope_dist_fdom <- dist(fdomDat[, c(10,11)])
+hi_slope_complete_fdom <- hclust(hi_slope_dist_fdom, method = "single")
+plot(hi_slope_complete_fdom, labels = fdomDat$startDate)
+hi_slope_fdom_4 <- cutree(hi_slope_complete_fdom, k = 4)
+
+plot(x = fdomDat$HI, y = fdomDat$Slope, col = hi_slope_fdom_4, pch = 20)
+abline( h = 0, lty = 2, col = "red") ; abline(v = 0, lty = 2, col = "red")
+```
+
+```{r clusters with all variables HI/slope}
+# need to fix this because of the weird fdom event 
+# (only fixed in the eventsFinal df, not the eventsUnique one)
+allVar_hi_dist <- dist(eventsUnique[, c(9, 11, 13, 15)])
+allVar_hi_complete <- hclust(allVar_hi_dist, method = "complete")
+plot(allVar_hi_complete, labels = eventsUnique$startDate)
+
+allVar_hi_3 <- cutree(allVar_hi_complete, k = 3)
+pairs(eventsUnique[, c(9, 11, 13, 15)], panel = function(x,y) text(x, y, allVar_hi_3))
+
+allVar_slope_dist <- dist(eventsUnique[,c(10, 12, 14, 16)])
+allVar_slope_complete <- hclust(allVar_slope_dist, method = "complete")
+plot(allVar_slope_complete, labels = eventsUnique$startDate)
+
+
+allVar_dist <- dist(eventsUnique[, -c(1:8)])
+allVar_complete <- hclust(allVar_dist, method = "complete")
+plot(allVar_complete, labels = eventsUnique$startDate)
+
+allVar_3 <- cutree(allVar_complete, k = 3)
+pairs(eventsUnique[, -c(1:8)], panel = function(x,y) text(x, y, allVar_3))
+```
+
+```{r clustering events by stats}
+events_dist <- dist(eventsUnique[,c(5, 7, 8)])
+events_complete <- hclust(events_dist, method = "complete")
+plot(events_complete, labels = eventsUnique$startDate)
+
+events_3 <- cutree(events_complete, k = 3)
+pairs(eventsUnique[, c(5, 7, 8)], panel = function(x,y) text(x, y, events_3))
+```
+
+
