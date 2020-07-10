@@ -1,0 +1,108 @@
+```{r Abundance v Physical: Turb,Temp Separated by year & FLDNUM}
+#Selection of Physical & Fieldnum
+  phyto_cynTVT<- select(phyto_cyn,year,FLDNUM, TURB, TEMP, BIOVOLUME) %>% 
+    filter(1996<=year&year<=2012)
+  phyto_cynTVT
+#________________________________________________________________________ 
+#Total Turb v Abund
+  phyto_cT<-ggplot(phyto_cynTVT,aes(TURB,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+ scale_y_log10()+ theme_bw()+
+    ggtitle("Turbidity v Biovolume 1996-2012 Overall")+
+    xlab("Turbidity (Nephelometric Turbidity Units (NTU))") +ylab("Biovolume of Cyanobacteria (m^3/L)")+
+  phyto_cT
+#Separate by FieldNum
+  phyto_cfldT<-ggplot(phyto_cynTVT,aes(TURB,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+ scale_y_log10()+ theme_bw()+
+    ggtitle("Turbidity v Biovolume 1996-2012 by Field Station")+
+    xlab("Turbidity (Nephelometric Turbidity Units (NTU))") +ylab("Biovolume of Cyanobacteria (m^3/L)")+facet_wrap(~FLDNUM,ncol=3)
+  phyto_cfldT
+#________________________________________________________________________  
+#Total Discharge?
+#________________________________________________________________________  
+#Total Temp v Abund
+   phyto_cTp<-ggplot(phyto_cynTVT,aes(TEMP,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+     ggtitle("Water Temperature 1996-2012 Overall")+
+    xlab("Temperature (C)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")
+  phyto_cTp
+#Separate by FieldNum
+  phyto_cfldTp<-ggplot(phyto_cynTVT,aes(TEMP,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+    ggtitle("Water Temperature 1996-2012 by Field Station")+
+    xlab("Temperature (C)")+ ylab("Biovolume of Cyanobacteria (m^3/L)")+ facet_wrap(~FLDNUM,ncol=3)
+  phyto_cfldTp
+  
+
+```
+
+```{r Abundance v Chemical: TN,TP,SI Separated by year & FLDNUM}
+#Selection of Fieldnum and Chemicals
+  phyto_cynNPSO<- select(phyto_data,year,FLDNUM, TN,TP, NP,SI, DO,BIOVOLUME) %>% 
+    filter(1996<=year&year<=2012)
+  phyto_cynNPSO
+#________________________________________________________________________
+#Total TN v Abund
+  phyto_cynN<-ggplot(phyto_cynNPSO,aes(TN,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+    ggtitle("Nitrogen v Biovolume 1996-2012 Overall")+
+    xlab("Nitrogen (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")
+  phyto_cynN
+#Separate by FieldNum
+  phyto_cynfN<-ggplot(phyto_cynNPSO,aes(TN,BIOVOLUME))+
+    geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+    ggtitle("Nitrogen v Biovolume 1996-2012 by Field Station")+
+    xlab("Nitrogen (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")+ facet_wrap(~FLDNUM,ncol=3)
+  phyto_cynfN
+#________________________________________________________________________
+  #Total TP v Abund
+    phyto_cynP<-ggplot(phyto_cynNPSO,aes(TP,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Phosphorus v Biovolume 1996-2012 Overall")+
+      xlab("Phosphorus (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")
+    phyto_cynP
+  #Separate by FieldNum
+    phyto_cynfP<-ggplot(phyto_cynNPSO,aes(TP,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Phosphorus v Biovolume 1996-2012 by Field Station")+
+      xlab("Phosphorus (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")+facet_wrap(~FLDNUM,ncol=3)
+    phyto_cynfP
+#________________________________________________________________________    
+  #Total SI  v Abund
+    phyto_cynS<-ggplot(phyto_cynNPSO,aes(SI,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Silica v Biovolume 1996-2012 Overall")+
+      xlab("Silica (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")
+    phyto_cynS
+  #Separate by FieldNum
+    phyto_cynfS<-ggplot(phyto_cynNPSO,aes(SI,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Silica v Biovolume 1996-2012 by Field Station")+
+      xlab("Silica (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")+ facet_wrap(~FLDNUM,ncol=3)
+    phyto_cynfS
+#________________________________________________________________________    
+  #Total DO  v Abund
+    phyto_cynO<-ggplot(phyto_cynNPSO,aes(DO,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Dissolved Oxygen v Biovolume 1996-2012 Overall")+
+      xlab("DO (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)")
+    phyto_cynO
+  #Separate by FieldNum
+    phyto_cynfO<-ggplot(phyto_cynNPSO,aes(DO,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Dissolved Oxygen v Biovolume 1996-2012 by Field Station")+
+      ylab("DO (mg/L)") +ylab("Biovolume of Cyanobacteria (m^3/L)") + facet_wrap(~FLDNUM,ncol=3)
+    phyto_cynfO
+#________________________________________________________________________
+  #Total NP v Abund
+    phyto_cynNP<-ggplot(phyto_cynNPSO,aes(NP,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Nitrogen:Phosphorus v Biovolume 1996-2012 Overall")+
+      xlab("N:P") +ylab("Biovolume of Cyanobacteria (m^3/L)")
+    phyto_cynNP
+  #Separate by FieldNum
+    phyto_cynfNP<-ggplot(phyto_cynNPSO,aes(NP,BIOVOLUME))+
+      geom_point()+ geom_smooth(method = lm)+scale_y_log10()+ theme_bw()+
+      ggtitle("Nitrogen:Phosphorus v Biovolume 1996-2012 by Field Station")+
+      xlab("N:P") +ylab("Biovolume of Cyanobacteria (m^3/L)")+facet_wrap(~FLDNUM,ncol=3)
+    phyto_cynfNP
+```
