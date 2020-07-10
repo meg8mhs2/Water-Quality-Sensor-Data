@@ -12,6 +12,7 @@ library(lubridate)
 library(ggplot2)
 library(ggthemes)
 library(dplyr)
+library(RColorBrewer)
 start <- now()
 ```
 
@@ -28,6 +29,7 @@ phyto <- phytos_whole %>% left_join(phyto_info,by="SHEETBAR")
 
 # Cleaning the dates
 phyto <- phyto %>% mutate(DATE=mdy(DATE))
+phyto_info <- phyto_info %>% mutate(DATE=mdy(DATE))
 ```
 
 ## Community Metrics
@@ -89,7 +91,9 @@ print(present_everywhere)
 ```
 
 ```{r classifying cyano}
-harmful <- c('Aphanizomenon sp.','Dolichospermum sp.','Microcystis aeruginosa', 'Planktothrix sp.', 'Pseudanabaena limnetica', 'Merismopedia tenuissima', 'Merismopedia punctata', 'Merismopedia tenuis', 'Aphanocapsa delicatissima', 'Aphanocapsa sp.', 'Raphidiopsis curvata', 'Woronichinia karelica') #cyanotoxins, Raphidiopsis found at https://onlinelibrary.wiley.com/doi/abs/10.1046/j.1529-8817.2001.01075.x, Woronichinia (potentially toxic) found at https://www.inaturalist.org/guide_taxa/700578
+harmful <- c('Aphanizomenon sp.','Dolichospermum sp.','Microcystis aeruginosa', 'Planktothrix sp.', 'Pseudanabaena limnetica', 'Merismopedia tenuissima', 'Merismopedia punctata', 'Merismopedia tenuis', 'Aphanocapsa delicatissima', 'Aphanocapsa sp.', 'Raphidiopsis curvata') 
+harmful_probable <- c('Aphanizomenon sp.','Dolichospermum sp.','Microcystis aeruginosa', 'Planktothrix sp.', 'Pseudanabaena limnetica', 'Merismopedia tenuissima', 'Merismopedia punctata', 'Merismopedia tenuis', 'Aphanocapsa delicatissima', 'Aphanocapsa sp.', 'Raphidiopsis curvata', 'Woronichinia karelica') 
+#cyanotoxins, Raphidiopsis found at https://onlinelibrary.wiley.com/doi/abs/10.1046/j.1529-8817.2001.01075.x, Woronichinia (potentially toxic) found at https://www.inaturalist.org/guide_taxa/700578
 n_fixer <- c('Aphanizomenon sp.','Dolichospermum sp.','Planktothrix sp.') #heterocystous
 like_algae <- c('Chroococcus microscopicus','Chroococcus sp.') #according to this source, like eukaryotic algaes https://micro.magnet.fsu.edu/featuredmicroscopist/vanegmond/chroococcussmall.html
 oscillatoriales <- c('Planktolyngbya limnetica', 'Planktolyngbya contorta') #oscillatoriales order, https://www.inaturalist.org/guide_taxa/751676 
@@ -141,33 +145,44 @@ phyto <- phyto %>% mutate(rel_harmful_cyan = harmful_abund/total_abundance * 100
 ## PCA of Environmental Factors
 
 ```{r selecting nutrient factors}
-nutrients <- phyto_info %>% 
+nutrients1 <- phyto_info %>% 
   select(FLDNUM,DO,SRP,TP,TN,NOX,SI) %>% 
   na.omit() # Using na.omit, lost 4 records
 # Using just the nutrients here to separate the field stations
-cor(nutrients)
-nutrients.pc <- princomp(nutrients[,-c(1,3,6)],cor=T,scores=T)
-summary(nutrients.pc,loadings=T)
+cor(nutrients1)
+nutrients.pc1 <- princomp(nutrients1[,-c(1,3,6)],cor=T,scores=T)
+summary(nutrients.pc1,loadings=T)
 # scree plot
-plot(1:(length(nutrients.pc$sdev)),  (nutrients.pc$sdev)^2, type='b',
+plot(1:(length(nutrients.pc1$sdev)),  (nutrients.pc1$sdev)^2, type='b',
      main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+```
 
-# plotting with FLDNUM labels for the first 3 components (92.6% explained)
-## 1 - 2
-plot(nutrients.pc$scores[,2]~nutrients.pc$scores[,1],
-     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
-text(nutrients.pc$scores[,1], nutrients.pc$scores[,2],
-     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
-## 1 - 3
-plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,1],
-     xlab="PC 1", ylab="PC 3", type='n', lwd=2)
-text(nutrients.pc$scores[,1], nutrients.pc$scores[,3],
-     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
-## 2 - 3
-plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,2],
-     xlab="PC 2", ylab="PC 3", type='n', lwd=2)
-text(nutrients.pc$scores[,2], nutrients.pc$scores[,3],
-     labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+```{r plotting nutrient pca}
+# # plotting with FLDNUM labels for the first 3 components (92.6% explained)
+# ## 1 - 2
+# plot(nutrients.pc$scores[,2]~nutrients.pc$scores[,1],
+#      xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+# text(nutrients.pc$scores[,1], nutrients.pc$scores[,2],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+
+as_tibble(nutrients.pc1$scores) %>%
+  ggplot(aes(Comp.1,Comp.2)) +
+  geom_point(aes(color=nutrients1$FLDNUM)) + 
+  ggtitle('PCA of Nutrients Across Pools') +
+  theme_clean() +
+  ylab('PC 2 (High Total Phosphorous & Low Silica)') +
+  xlab('PC 1 (High Dissolved Oxygen & Low Phosphorous)')
+  
+# ## 1 - 3
+# plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,1],
+#      xlab="PC 1", ylab="PC 3", type='n', lwd=2)
+# text(nutrients.pc$scores[,1], nutrients.pc$scores[,3],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+# ## 2 - 3
+# plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,2],
+#      xlab="PC 2", ylab="PC 3", type='n', lwd=2)
+# text(nutrients.pc$scores[,2], nutrients.pc$scores[,3],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
 ```
 
 Eigenvalue Size < 1 for 3 components, so use PC 1, 2, & 3.
@@ -175,12 +190,87 @@ Component 1 shows 42% of variation. High dissolved oxygen values and low total p
 Component 2 shows another 27% of variation (69% total). High total phosphorous and low silica are the major characteristics, with a slight lean towards low total nitrogen.
 Component 3 shows an additional 23% of variation (92% total). High total nitrogen and dissolved oxygen are characteristics, while low silica is also considered. 
 
-Comparing Components 1 & 2, stations 5 & 6 were mostly low scores on PC1 and high scores on PC2. Station 1 had a wide spread of PC1 scores but relatively low PC2 scores, while stations 2, 3, & 4 had varied scores. Stations 1 through 4 seemd to have a positive relationship between PC1 and PC2 scores, while stations 5 and 6 had a less clear negative relationship between PC1 and PC2. 
+Comparing Components 1 & 2, stations 5 & 6 were mostly low scores on PC1 and high scores on PC2. Station 1 had a wide spread of PC1 scores but relatively low PC2 scores, while stations 2, 3, & 4 had varied scores. Stations 1 through 4 seemed to have a positive relationship between PC1 and PC2 scores, while stations 5 and 6 had a less clear negative relationship between PC1 and PC2. Stations 5 & 6 being noticeably higher on the PC2 axis implies that they did not have high silica levels and did have high total phosphorous levels. 
 
 Comparing Components 1 & 3, stations 5 & 6 were again separated to the lower scores for PC1, and no real trend emerged from PC3 here. This suggests that high total nitrogen distinguishes the stations, as a high total nitrogen would lower the PC1 score and raise the PC3 score.
 
-Comparing Components 2 & 3, station 6 is clearly on its own with high PC2 scores and varied PC3 scores, while station 1 is on the other end of the spectrum with low PC2 and low PC3 scores. The other 4 stations are unclear and more varied in the middle of stations 1 and 6, so a trend is unclear. However, it suggests that between station 1 and 6, the distinguishing characteristics 
+Comparing Components 2 & 3, station 6 is clearly on its own with high PC2 scores and varied PC3 scores, while station 1 is on the other end of the spectrum with low PC2 and low PC3 scores. The other 4 stations are unclear and more varied in the middle of stations 1 and 6, so a trend is unclear. However, it suggests that between station 1 and 6, the distinguishing characteristics are likely high total phosphorous for station 6 and low total nitrogen/high silica for station 1. Because station 1 scored so much lower for PC3 than the other stations, it is likely that its low nitrogen levels distinguish it from the other stations. 
 
+Station 1, what we know: Low PC2 scores, low PC3 score. Low phosphorous/high silica/high nitrogen, low nitrogen/low dissolved oxygen/high silica. HIGH SILICA might be the key here.
+
+Station 2, what we know: Positive relationship with PC1 & PC2. LOW SILICA might be the key, while other factors vary more at station 2 when compared to station 1. 
+
+Station 3, what we know: Positive relationship with PC1 & PC2. LOW SILICA might be the key, while other factors vary more at station 3 when compared to station 1. 
+
+Station 4, what we know: Positive relationship with PC1 & PC2. LOW SILICA might be the key, while other factors vary more at station 4 when compared to station 1. 
+
+Station 5, what we know: Low PC1, High PC2. Low dissolved oxygen/high total phosphorous/high total nitrogen/high silica, high total phosphorous/low silica/low total nitrogen. HIGH TOTAL PHOSPHOROUS might be the key here. 
+
+Station 6, what we know: Low PC1, High PC2. HIGH TOTAL PHOSPHOROUS might be the key here.
+
+Other important thing to know: north to south order is 1, 2, 3, 6, 4, 5 for whatever reason.
+
+Combining all of that: As you move north to south, it seems that silica levels drop off from station 1 to station 4, where the Illinois meets the Mississippi. From there, the high phosphorous levels of station 6 (on the Illinois River) are carried further south, distinguishing stations 5 and 6 from the others. 
+
+It may be worth separating stations 1 through 3 as the Upper Mississippi River, station 6 as the Illinois River, and stations 4 and 5 as the combined area. This will allow for exploration of how patterns in upper sections of the river affect the downstream communities. 
+
+```{r nitrogen/phosphorous ratio}
+# Didn't have this yet, adding it in to redo PCA
+np_ratio <- phyto_info %>% select(c(SHEETBAR,TN,TP)) %>% na.omit() %>% 
+  mutate(np_ratio = TN/TP) %>%  # four observations missing here
+  select(c(SHEETBAR,np_ratio))
+phyto <- phyto %>% left_join(np_ratio,by='SHEETBAR')
+phyto_info <- phyto_info %>% left_join(np_ratio,by='SHEETBAR')
+```
+
+```{r nutrient pca again}
+nutrients2 <- phyto %>% 
+  select(SHEETBAR,FLDNUM,DO,np_ratio,SI) %>% 
+  na.omit() # Using na.omit, lost 4 records
+
+# Using just the nutrients here to separate the field stations
+cor(nutrients2)
+nutrients.pc2 <- princomp(nutrients2[,-c(1,2)],cor=T,scores=T)
+summary(nutrients.pc2,loadings=T)
+# scree plot
+plot(1:(length(nutrients.pc2$sdev)),  (nutrients.pc2$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
+```
+
+```{r nutrient pca plotting}
+# plotting with FLDNUM labels for the first 3 components (92.6% explained)
+## 1 - 2
+# plot(nutrients.pc$scores[,2]~nutrients.pc$scores[,1],
+#      xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+# text(nutrients.pc$scores[,1], nutrients.pc$scores[,2],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+ordered_stations <- factor(nutrients2$FLDNUM)
+my_colors <- brewer.pal(n=12,"Blues")[4:10]
+
+as_tibble(nutrients.pc2$scores) %>%
+  ggplot(aes(Comp.1,Comp.2)) +
+  geom_jitter(aes(color=ordered_stations)) +
+  labs(color='Pool') +
+  scale_fill_gradient(breaks=seq(1,6)) +
+  ggtitle('PCA of Nutrients Across Pools') +
+  theme_clean() +
+  scale_color_manual(values=my_colors) +
+  xlab('PC 1 (High Dissolved Oxygen & N:P Ratio)') +
+  ylab('PC 2 (Low N:P Ratio & Silica)')
+
+
+
+# ## 1 - 3
+# plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,1],
+#      xlab="PC 1", ylab="PC 3", type='n', lwd=2)
+# text(nutrients.pc$scores[,1], nutrients.pc$scores[,3],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+# ## 2 - 3
+# plot(nutrients.pc$scores[,3]~nutrients.pc$scores[,2],
+#      xlab="PC 2", ylab="PC 3", type='n', lwd=2)
+# text(nutrients.pc$scores[,2], nutrients.pc$scores[,3],
+#      labels=nutrients$FLDNUM, cex=0.7, lwd=2)
+```
 
 ```{r selecting physical factors}
 physical <- phyto_info %>% 
@@ -212,69 +302,278 @@ text(physical.pc$scores[,2], physical.pc$scores[,3],
      labels=physical$FLDNUM, cex=0.7, lwd=2)
 ```
 
-```{r selecting all environmental factors}
-enviro <- phyto_info %>% 
-  select(FLDNUM,DO,SRP,TP,TN,NOX,SI,TEMP,PH,TURB) %>% 
-  na.omit() # 4 observations removed here
-# Looking at relationships
-cor(enviro)
-# PCA
-enviro.pc <- princomp(enviro[,-c(1)],core=T,scores=T)
-summary(enviro.pc, loadings=T)
-# scree plot
-plot(1:(length(enviro.pc$sdev)),  (enviro.pc$sdev)^2, type='b',
-     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
-# Plotting PC 1 & 2, explains 99.6% of variance
-plot(enviro.pc$scores[,2]~enviro.pc$scores[,1],
-     xlab="PC 1", ylab="PC 2", type='n', lwd=2)
-text(enviro.pc$scores[,1], enviro.pc$scores[,2],
-     labels=enviro$FLDNUM, cex=0.7, lwd=2)
+Physical factors used for PCA were the temperature, pH, and turbidity for each observation. Not sure how useful it is to include all 3 components, as the eigenvalue size for 2 components is about 1 so that may be adequate. Just using the first two components, 85% of the variation is explained. 
+
+The first component shows a positive coefficient for temperature and turbidity and a strong negative coefficient for pH. High scores would mean warmer, more turbid waters that are more acidic. 
+
+The second component has a strong positive coefficient for temperature and a negative coefficient for turbidity. High scores would mean warmer, less turbid waters. Because pH is not included, some distinctions may be possible when seeing how different stations scored for the two components. 
+
+Plotting the observations on these two components, station 5 immediately stands out as mostly lower scores on PC2 and high PC1 scores. This makes sense as it is the southernmost station, and temperature has a positive coefficient for both PC1 & PC2. However, the coefficients for turbidity differ, and so station 5 appears to have been more turbid than the other stations at certain points. 
+
+In contrast, stations 1 and 2 have low PC1 scores, likely because they were generally colder because they are located further north. Station 1 has higher PC2 scores than station 2, generally, and so this indicates that station 2 was likely more turbid than station 1. 
+
+Station 3 had average PC1 scores, but higher PC2 scores. This suggests that the water was warming AND the turbidity was not extremely high; otherwise, the PC2 score would be much lower. 
+
+Station 4 also had average PC1 scores, and varied PC2 scores from -2 to some of the highest at just over 1. This is interesting to see, and this variation suggests that the two rivers joining together provide varied conditions. Station 4 may be a difficult to determine upstream influences, as both 3 and 6 feed into this location. 
+
+It is worth noting that no observations were in the upper right corner, which would suggest that the water was much warmer and had a lower pH. Likely pH is not a distinguishing factor, and so analyses of cyanobacteria relationships with pH can be done from a holistic level. 
+
+```{r updating info}
+# Getting total biovolume, cyanobacteria biovolume, and harmful cyanobacteria biovolume added to the info dataset
+biovolumes <- phyto %>% 
+  select(SHEETBAR,total_abundance,non_cyan_abund,cyan_abund,harmful_abund)
+phyto_info <- phyto_info %>% left_join(biovolumes,by='SHEETBAR')
 ```
 
-```{r looking at station 5 turbidity}
-phyto_info %>% filter(FLDNUM == 5) %>% 
-  ggplot(aes(DATE,TURB)) +
-  geom_point()
-phyto_info %>% filter(FLDNUM == 1) %>% 
-  ggplot(aes(DATE,TURB)) +
-  geom_point()
+
+```{r all environmental factor pca}
+environmental <- phyto_info %>%
+  select(FLDNUM,DO,np_ratio,SI,PH,TURB,TEMP, total_abundance,non_cyan_abund,cyan_abund,harmful_abund) %>% 
+  na.omit()
+cor(environmental)[,8:11]
+# Doing some P,C, and A
+environment.pca <- princomp(environmental[,-c(1,8,9,10,11)],cor=T,scores=T)
+summary(environment.pca,loadings=T)
+
+# scree plot
+plot(1:(length(environment.pca$sdev)),  (environment.pca$sdev)^2, type='b',
+     main="Scree Plot", xlab="Number of Components", ylab="Eigenvalue Size")
 ```
+
+```{r plotting environmental pca}
+# # plotting with FLDNUM labels across components
+# ## 1 - 2
+# plot(environment.pca$scores[,2]~environment.pca$scores[,1],
+#      xlab="PC 1", ylab="PC 2", type='n', lwd=2)
+# text(environment.pca$scores[,1], environment.pca$scores[,2],
+#      labels=environmental$FLDNUM, cex=0.7, lwd=2)
+ordered_stations <- factor(environmental$FLDNUM)
+my_colors <- brewer.pal(n=12,"Blues")[4:10]
+
+as_tibble(environment.pca$scores) %>% 
+  ggplot(aes(Comp.1,Comp.2)) +
+  geom_jitter(aes(color=ordered_stations)) +
+  theme_bw() +
+  labs(color='Pool') +
+  scale_fill_gradient(breaks=seq(1,6)) +
+  ggtitle('PCA of Environmental Factors') +
+  scale_color_manual(values=my_colors) +
+  xlab('High Dissolved Oxygen & pH (45.48% of Variance)') +
+  ylab('High Turbidity & Low Silica (22.03% of Variance)')
+
+
+# ## 1 - 3
+# plot(environment.pca$scores[,3]~environment.pca$scores[,1],
+#      xlab="PC 1", ylab="PC 3", type='n', lwd=2)
+# text(environment.pca$scores[,1], environment.pca$scores[,3],
+#      labels=environmental$FLDNUM, cex=0.7, lwd=2)
+# ## 2 - 3
+# plot(environment.pca$scores[,3]~environment.pca$scores[,2],
+#      xlab="PC 2", ylab="PC 3", type='n', lwd=2)
+# text(environment.pca$scores[,2], environment.pca$scores[,3],
+#      labels=environmental$FLDNUM, cex=0.7, lwd=2)
+```
+
+Combining all of the environmental factors, the first three components explain 82% of the variance & will be the main focus. PC1 is most heavily influenced by high dissolved oxygen and pH levels. PC2 leaves these two factors out and is more heavily determined by low silica and high turbidity. PC3 factors pH in again, and is heavily determined by low nitrogen to phosphorous ratios, high temperatures, and higher pH levels. 
+
+The first plot shows that stations 1 through 3 with average to high PC1 scores and low PC2 scores. Stations 4 through 6, on the other hand, have lower PC1 scores and higher PC2 scores. Station 5, the southernmost station, has several of the highest scores on the PC2 scale.
+
+The second plot shows a similar split along the PC1 axis, with stations 1 through 3 scoring higher than scations 4 through 6. There is not a notable difference between the stations on the PC3 axis, however. Stations 1 and 5, the northern and southernmost stations, respectively, have the two lowest scores on the PC3 axis. 
+
+The third plot shows a similar divide as the first along the PC2 axis, with stations 1 through 3 scoring lower than stations 4 through 6 consistently. PC3 is again unhelpful in sorting out the stations.
+
+The takeaway is that the stations on the upper Mississippi river tend to have higher dissolved oxygen levels and a higher pH than the station on the Illinois river or after the two rivers join. This is important to remember, as these two factors have the greatest covariance with the biovolume of harmful cyanobacteria. Meanwhile, the stations on the Illinois river or after the Illinois joins the Mississippi tend to have lower silica and higher turbidity than their northern counterparts. While silica has only a slight positive covariance with harmful cyanobacteria biovolume, it has a moderate negative covariance with non-cyanobacteria phytoplankton. This suggests that while harmful cyanobacteria exist at all 6 stations as noted before, they may be appearing for different reasons. 
+
 
 ## Tracking Harmful Cyanobacteria on Environmental Factors & Field Station
 
-```{r nitrogen/phosphorous ratio}
-np_ratio <- phyto_info %>% select(c(SHEETBAR,TN,TP)) %>% na.omit() %>% 
-  mutate(np_ratio = TN/TP) %>%  # four observations missing here
-  select(c(SHEETBAR,np_ratio))
-phyto <- phyto %>% left_join(np_ratio,by='SHEETBAR')
+```{r grouping stations}
+upper_mr <- c(1,2,3) # Dissolved oxygen & pH as major factors
+ill_r <- c(6) # same as below
+joined <- c(4,5) # Low silica and high turbidity as factors
+
+phyto_info %>% filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DATE,DO)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('Dissolved Oxygen for Upper Stations')
+
+phyto_info %>% filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DATE,PH)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('pH for Upper Stations')
+
+phyto_info %>% filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DO,PH)) +
+  geom_point() +
+  geom_smooth(method=lm) +
+  ggtitle('pH and Dissolved Oxygen for Upper Stations')
 ```
 
-```{r graphing np ratio over time}
-phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(DATE,np_ratio)) +
+pH and dissolved oxygen have a slightly positive trend over time at the upper stations, so it makes sense that there seems to be a linear pattern between them. From before, the covariance is .799, so it is most likely adequate to only use one of the factors for looking at cyanobacteria. Dissolved oxygen seems like the logical choice since there is a wider range of values for dissolved oxygen than pH, and the pH scores are not particularly extreme regardless (only slightly basic). 
+
+```{r upper ms DO & cyano}
+phyto_info %>% filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DO,harmful_abund)) +
   geom_point() +
-  facet_wrap(~FLDNUM,nrow=3)
+  scale_y_log10() +
+  ggtitle('Dissolved Oxygen & log(Harmful Abundance)')
+phyto_info %>% 
+  select(DO,harmful_abund) %>% 
+  mutate(log_harm_abund = log(harmful_abund)) %>% 
+  na.omit() %>% 
+  cor()
 ```
-```{r n:p and cyanobacteria plots}
-phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(np_ratio,log(harmful_abund))) +
+
+Interestingly, there is no clear relationship between dissolved oxygen and the abundance of the harmful cyanobacteria identified in these upper stations. The correlation matrix shows that the abundance and dissolved oxygen has an R of .264, and a log transformation of the abundance gives an even lower R of .173. This suggests that a nonlinear model may be most appropriate for further exploration, or, more likely, that the raw abundance is not the best measure to understand the relationship. 
+
+```{r upper ms DO & cyano 2}
+phyto_info %>% filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DO,harmful_abund/total_abundance)) +
   geom_point() +
-  facet_wrap(~FLDNUM,nrow=3) +
-  geom_smooth(method=lm)
-phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(log(np_ratio),log(harmful_abund))) +
-  geom_point() +
-  facet_wrap(~FLDNUM,nrow=3) +
-  geom_smooth(method=lm)
-phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(np_ratio,log(harmful_abund))) +
-  geom_point() +
-  geom_smooth(method=lm)
-phyto %>% filter(is.na(FLDNUM) == F) %>% 
-  ggplot(aes(np_ratio,log(total_abundance))) +
-  geom_point() +
-  geom_smooth(method=lm)
+  ggtitle('Relative Abundance of Harmful Cyanobacteria') +
+  scale_x_log10()
+phyto_info %>% 
+  mutate(rel_harmful = harmful_abund/total_abundance) %>% 
+  select(rel_harmful,DO) %>% 
+  na.omit() %>% 
+  cor()
 ```
-  
+
+Similar to the last try, there is no clear pattern, both before and after applying a log scale (this time to the Dissolved Oxygen). The relative abundance of harmful cyanobacteria is not clearly linked to the dissolved oxygen, with an R of -.021, even less than the total abundance of the harmful cyanobacteria. In Carey's paper (2012), it is suggested that akinete producing cyanobacteria are resistant to variable conditions, and germination is triggered by dissolved oxygen, amongst other things. If these are the cyanobacteria that are dominating these pools, then the correlation may be different. If the cyanobacteria are different, then it may be a different factor allowing cyanobacteria to flourish at these pools. 
+
+```{r harmful akinetes in the upper pools}
+phyto %>% filter(GENUS %in% harmful & GENUS %in% thick_wall) %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  count()
+```
+
+There were 36 observed instances of harmful akinete producing cyanobacteria in the upper pools. Now to add a measure of their abundance over time.
+
+```{r harmful akinetes in the upper pools 2}
+temp <- phyto %>% 
+  filter(GENUS %in% harmful & GENUS %in% thick_wall) %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  group_by(SHEETBAR) %>% 
+  mutate(harmful_akinete = sum(`TOTAL BV_um3L`)) %>% 
+  select(SHEETBAR,harmful_akinete)
+phyto_info <- phyto_info %>%
+  left_join(temp,by='SHEETBAR')
+```
+
+Now that the biovolume of these cyanobacteria has been calculated, we can compare it to dissolved oxygen like before.
+
+```{r harmful akinetes and dissolved oxygen in the upper pools}
+phyto_info %>% 
+  select(DO,harmful_akinete) %>% 
+  ggplot(aes(DO,harmful_akinete)) +
+  geom_point() +
+  ggtitle('Akinetes and Dissolved Oxygen') +
+  scale_y_log10()
+phyto_info %>% 
+  select(DO,harmful_akinete) %>% 
+  mutate(log_harmful_akinete = log(harmful_akinete)) %>% 
+  na.omit() %>% 
+  cor()
+```
+
+After isolating the akinete producing cyanobacteria, the correlation with dissolved oxygen is much clearer, with an R of .484. It's also important to know, though, how much of the harmful cyanobacteria belong to this group, as this means far less if the akinete producers are a small minority.
+
+```{r quick akinete numbers}
+phyto_info <- phyto_info %>% 
+  mutate(rel_akinete = harmful_akinete/total_abundance)
+```
+
+And to quickly graph it:
+
+```{r}
+phyto_info %>% ggplot(aes(DATE,rel_akinete)) +
+  geom_point() +
+  ggtitle('Relative Abundance of Akinete Producers')
+```
+
+Well that's disappointing. No higher than 17% at any given point, and usually below 5%. Now to classify the 95% and see what might be driving them.
+
+```{r upper mr harmfuls}
+non_akinete_umr <- unique((phyto %>% 
+                             filter(FLDNUM %in% upper_mr) %>% 
+                             filter(GENUS %in% harmful))$GENUS)
+intersect(non_akinete_umr,present_everywhere)
+```
+
+Interestingly, 5 of the remaining species observed are present at all stations, but the other 5 are not. I am most interested in the differences between the stations right now, specifically how the Illinois might affect the lower stations and how the upper stations contribute to lower cyanobacteria populations. To find these, I'm going to look for harmful cyanobacteria present in the upper stations and not present in station 6, the only station on the Illinois River. This will potentially provide insight into what differences (ostensibly dissolved oxygen and/or pH) between the rivers might contribute to the growth of these species.
+
+```{r mr harmfuls not illinois}
+upper_harmfuls <- unique((phyto %>% 
+                              filter(FLDNUM %in% upper_mr) %>% 
+                              filter(GENUS %in% harmful))$GENUS)
+ill_harmfuls <- unique((phyto %>% 
+                          filter(FLDNUM == 6) %>% 
+                          filter(GENUS %in% harmful))$GENUS)
+unique_upper_harmfuls <- setdiff(upper_harmfuls,ill_harmfuls)
+print(unique_upper_harmfuls)
+```
+
+```{r mr harmfuls analysis}
+# finding the percent these make up of total population
+phyto <- phyto %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  filter(GENUS %in% unique_upper_harmfuls) %>% 
+  group_by(SHEETBAR) %>% 
+  mutate(uniq_umr_harm = sum(`TOTAL BV_um3L`))
+```
+
+```{r mr harmfuls analysis 2}
+phyto %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DATE,uniq_umr_harm)) +
+  geom_point() + 
+  geom_smooth() +
+  ggtitle('Uniques Total Biovolume') +
+  scale_y_log10()
+phyto %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(DATE,uniq_umr_harm/total_abundance * 100)) +
+  geom_point() + 
+  geom_smooth() +
+  ggtitle('Portion of Uniques of Total Biovolume')
+phyto_info %>% 
+  left_join(phyto %>% select(SHEETBAR,uniq_umr_harm),by='SHEETBAR') %>%
+  filter(FLDNUM %in% upper_mr) %>% 
+  select(DO,uniq_umr_harm) %>% 
+  na.omit() %>% 
+  cor()
+```
+
+Interesting that these unique cyanobacteria have a negative covariance with both dissolved oxygen and pH, while non-cyanobacteria have moderate positive covariances. The PCA separated these two factors as what distinguished the upper stations, but neither seem to positively affect the unique cyanobacteria. Instead, it seems that there is another factor that has led to their slight relative increase over time. Because the covariance with non-cyanobacteria abundance is moderately negative, my initial guess would be a nutrient factor like the nitrogen:phosphorous ratio. 
+
+```{r mr harmful analysis 3}
+phyto %>% 
+  filter(FLDNUM %in% upper_mr) %>% 
+  ggplot(aes(np_ratio,uniq_umr_harm)) +
+  geom_point() + 
+  geom_smooth() +
+  ggtitle('Portion of Uniques of Total Biovolume') +
+  scale_y_log10()
+phyto_info %>% 
+  left_join(phyto %>% select(SHEETBAR,uniq_umr_harm),by='SHEETBAR') %>%
+  filter(FLDNUM %in% upper_mr) %>% 
+  select(np_ratio,uniq_umr_harm) %>% 
+  na.omit() %>% 
+  cor()
+phyto_info %>% 
+  left_join(phyto %>% select(SHEETBAR,uniq_umr_harm),by='SHEETBAR') %>%
+  filter(FLDNUM %in% upper_mr) %>% 
+  select(np_ratio,non_cyan_abund) %>% 
+  na.omit() %>% 
+  cor()
+```
+
+```{r}
+print(now()-start)
+```
+
+
 
 
