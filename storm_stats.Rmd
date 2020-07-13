@@ -268,6 +268,7 @@ eventsTurb2$length_bin <- factor(eventsTurb2$length_bin,
 eventsTurb2$month <- factor(eventsTurb2$month,
                             levels = c("April", "June", "July", "August", "September"))
 
+### monthly event count plot ###
 png(filename = "monthly_event_count.png", width = 8, height = 6,
     units = "in", res = 300, bg = "transparent")
 eventsTurb2 %>% 
@@ -279,10 +280,32 @@ eventsTurb2 %>%
   xlab("Month of event start date") + ylab("Number of events") 
 dev.off()
 
-eventsTurb %>% 
-  ggplot(aes(x = startDate, y = avg_temp)) +
-  geom_point() + facet_wrap(~as.factor(year(startDate)), scales = "free_x") + geom_line()
+### version 2: heatmap ###
+eventsCount <- (eventsTurb2 %>% 
+  mutate(year = as.factor(year(startDate))))[,c(1, 16,17)] %>% 
+  group_by(year, month) %>% tally() 
 
+allMonthYear <- eventsCount %>% expand(month, year)
+
+eventsCount2 <- full_join(eventsCount, allMonthYear) %>% 
+  mutate(n = case_when(!is.na(n) ~ as.character(n),
+                       T ~ "0"))
+
+png(filename = "monthly_event_count_grid.png", width = 8, height = 6,
+    units = "in", res = 300, bg = "transparent")
+eventsCount2 %>% 
+  ggplot(aes(x = year, y = month, fill = n)) +
+  geom_tile(color = "black") +
+  scale_fill_manual(values = c("white", "lightblue", "darkblue"),
+                    name = "Number of Events") +
+  theme_bw() + xlab("Year") + ylab("Month")
+  theme(plot.background = element_rect(fill = "transparent",colour = NA),
+        legend.background = element_rect(fill = "transparent")) 
+dev.off()  
+
+
+
+### plot of temp over time ###
 png(filename = "temp_time.png", width = 6, height = 4,
     units = "in", res = 300, bg = "transparent")
 eventsTurb %>% 
@@ -683,7 +706,11 @@ rownames(dists) <- c("BGA", "CHL", "FDOM", "NO3", "TURB")
 colnames(dists) <- c("BGA", "CHL", "FDOM", "NO3", "TURB")
 
 
+
 # data wrangling in preparation for heatmap plotting
+#dists_t <- t(dists)
+dists[upper.tri(dists, diag = T)] <- NA
+
 dists_df <- dists %>%
   as_tibble() %>%
   rowid_to_column(var="X") %>%
@@ -694,14 +721,19 @@ dists_df <- dists %>%
                        X == 4 ~ "NO3",
                        X == 5 ~ "TURB"))
 
-png(filename = "dist_heatmap.png", width = 8, height = 6,
+
+
+png(filename = "dist_heatmap_vir.png", width = 8, height = 6,
     unit = "in", res = 300, bg = "transparent")
 # heatmap of the distance matrix
 ggplot(dists_df, aes(x = X, y = Y, fill = Distance)) + 
   geom_tile() +
   theme_bw() + theme(plot.background = element_rect(fill = "transparent",colour = NA),
                      legend.background = element_rect(fill = "transparent")) +
-  xlab("") + ylab("")
+  #scale_fill_continuous(na.value = 'white') +
+  scale_fill_viridis_c(na.value = "white") +
+  xlab("") + ylab("") +
+  scale_x_discrete(limits = rev(levels(as.factor(dists_df$X)))) 
 dev.off()
   
 ```
