@@ -1,0 +1,2722 @@
+---
+title: "DFA Final"
+author: "Megan J"
+date: "July 28, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(MARSS)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(modelr)
+require(gridExtra)
+```
+
+
+```{r Import Data}
+#1. Read the data
+#2. Summarize into by-day data for the backwater
+#3. Change the date to date format
+#4. Save the dates
+#5. Transpose
+#6. Set the column names as dates
+#7. Z-score the data
+#8. Save the discharge 
+
+#-----2018 MC-------
+MC.2018.raw<- read.csv("MC2018Day.csv") #1
+MC.2018.raw$Date<- ymd(MC.2018.raw$Date) #3
+MC.2018r<- as.matrix(MC.2018.raw[,c(2:6),]) 
+date<- MC.2018.raw[,"Date"] #4
+MC.2018.t<- t(MC.2018r) #5
+colnames(MC.2018.t)<-date #6
+MC.2018=(MC.2018.t-apply(MC.2018.t,1,mean,na.rm=TRUE))/ sqrt(apply(MC.2018.t,1,var,na.rm=TRUE)) #7
+Discharge8 <- t(MC.2018.raw[,"Discharge",drop=FALSE]) #8
+
+
+#-----2017 MC-------
+MC.2017.raw<- read.csv("MC2017Day.csv") #1
+MC.2017.raw$Date<- ymd(MC.2017.raw$Date) #3
+MC.2017r<- as.matrix(MC.2017.raw[,c(2:6),])
+date7<- MC.2017.raw[,"Date"] #4
+MC.2017.t<- t(MC.2017r) #5
+colnames(MC.2017.t)<-date7 #6
+MC.2017=(MC.2017.t-apply(MC.2017.t,1,mean,na.rm=TRUE))/ sqrt(apply(MC.2017.t,1,var,na.rm=TRUE)) #7
+Discharge7 <- t(MC.2017.raw[,"Discharge",drop=FALSE]) #8
+
+
+
+#-----2016 MC-------
+MC.2016.raw<- read.csv("MC2016Day.csv") #1
+MC.2016.raw$Date<- ymd(MC.2016.raw$Date) #3
+MC.2016r<- as.matrix(MC.2016.raw[,c(2:6),]) 
+date6<- MC.2016.raw[,"Date"] #4
+MC.2016.t<- t(MC.2016r) #5
+colnames(MC.2016.t)<-date6 #6
+MC.2016=(MC.2016.t-apply(MC.2016.t,1,mean,na.rm=TRUE))/ sqrt(apply(MC.2016.t,1,var,na.rm=TRUE)) #7
+Discharge6 <- t(MC.2016.raw[,"Discharge",drop=FALSE]) #8
+
+
+
+#-----2015 MC-------
+MC.2015.raw<- read.csv("MC2015Day.csv") #1
+MC.2015.raw$Date<- ymd(MC.2015.raw$Date) #3
+MC.2015r<- as.matrix(MC.2015.raw[,c(2:6),]) 
+date5<- MC.2015.raw[,"Date"] #4
+MC.2015.t<- t(MC.2015r) #5
+colnames(MC.2015.t)<-date5 #6
+MC.2015=(MC.2015.t-apply(MC.2015.t,1,mean,na.rm=TRUE))/ sqrt(apply(MC.2015.t,1,var,na.rm=TRUE)) #7
+Discharge5 <- t(MC.2015.raw[,"Discharge",drop=FALSE]) #8
+
+#-----2018 SI-------
+SI.2015.raw<- read.csv("SI2015B.csv") #1
+SI.2015.raw<- SI.2015.raw %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge)) #2
+SI.2015.raw$Date<- ymd(SI.2015.raw$Date) #3
+SI.2015r<- as.matrix(SI.2015.raw[,c(2:6),])
+dateS5<- ymd(SI.2015.raw$Date) #4
+SI.2015.t<- t(SI.2015r) #5
+colnames(SI.2015.t)<-dateS5 #6
+SI.2015=(SI.2015.t-apply(SI.2015.t,1,mean,na.rm=TRUE))/ sqrt(apply(SI.2015.t,1,var,na.rm=TRUE)) #7
+Discharge5s <- t(SI.2015.raw[,"Discharge",drop=FALSE]) #8
+
+
+
+#-----2016 SI-------
+SI.2016.raw<- read.csv("SI2016B.csv") #1
+SI.2016.raw<- SI.2016.raw %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge)) #2
+SI.2016.raw$Date<- ymd(SI.2016.raw$Date) #3
+SI.2016r<- as.matrix(SI.2016.raw[,c(2:6),])
+dateS6<- ymd(SI.2016.raw$Date) #4
+SI.2016.t<- t(SI.2016r) #5
+colnames(SI.2016.t)<-dateS6 #6
+SI.2016=(SI.2016.t-apply(SI.2016.t,1,mean,na.rm=TRUE))/ sqrt(apply(SI.2016.t,1,var,na.rm=TRUE)) #7
+Discharge6s <- t(SI.2016.raw[,"Discharge",drop=FALSE]) #8
+
+
+
+#-----2015 SI-------
+SI.2018.raw<- read.csv("SI2018B.csv") #1
+SI.2018.raw<- SI.2018.raw %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge)) #2
+SI.2018.raw$Date<- ymd(SI.2018.raw$Date) #3
+SI.2018r<- as.matrix(SI.2018.raw[,c(2:6),])
+dateS8<- ymd(SI.2018.raw$Date) #4
+SI.2018.t<- t(SI.2018r) #5
+colnames(SI.2018.t)<-dateS8 #6
+SI.2018=(SI.2018.t-apply(SI.2018.t,1,mean,na.rm=TRUE))/ sqrt(apply(SI.2018.t,1,var,na.rm=TRUE)) #7
+Discharge8s <- t(SI.2018.raw[,"Discharge",drop=FALSE]) #8
+
+
+
+#--------CORRECTING FOR CORRELATED DATA--------------
+SI.2015.rawc<- read.csv("2015SICalDay.csv") #1
+SI.2015.rawc$Date<- ymd(SI.2015.rawc$Date) #3
+SI.2015cr<- as.matrix(SI.2015.rawc[,c(2:6),])
+dateSc5<- ymd(SI.2015.rawc$Date) #4
+SI.2015.ct<- t(SI.2015cr) #5
+colnames(SI.2015.ct)<-dateSc5 #6
+SI.2015c=(SI.2015.ct-apply(SI.2015.ct,1,mean,na.rm=TRUE))/ sqrt(apply(SI.2015.ct,1,var,na.rm=TRUE)) #7
+Discharge5cs <- t(SI.2015.rawc[,"Discharge",drop=FALSE]) #8
+
+MC.2015.rawc<- read.csv("2015MCCalDay.csv") #1
+MC.2015.rawc<-  MC.2015.rawc %>% filter(Date<'2015-10-01')
+MC.2015.rawc<-  MC.2015.rawc %>% filter(!(Date=='2015-07-05'))
+
+MC.2015.rawc$Date<- ymd(MC.2015.rawc$Date) #3
+MC.2015cr<- as.matrix(MC.2015.rawc[,c(2:6),])
+datec5<- ymd(MC.2015.rawc$Date) #4
+MC.2015.ct<- t(MC.2015cr) #5
+colnames(MC.2015.ct)<-datec5 #6
+MC.2015c=(MC.2015.ct-apply(MC.2015.ct,1,mean,na.rm=TRUE))/ sqrt(apply(MC.2015.ct,1,var,na.rm=TRUE)) #7
+Discharge5c <- t(MC.2015.rawc[,"Discharge",drop=FALSE]) #8
+
+SI.2018.rawc<- read.csv("2018SICalDay.csv") #1
+SI.2018.rawc$Date<- ymd(SI.2018.rawc$Date) #3
+SI.2018cr<- as.matrix(SI.2018.rawc[,c(2:6),])
+dateSc8<- ymd(SI.2018.rawc$Date) #4
+SI.2018.ct<- t(SI.2018cr) #5
+colnames(SI.2018.ct)<-dateSc8 #6
+SI.2018c=(SI.2018.ct-apply(SI.2018.ct,1,mean,na.rm=TRUE))/ sqrt(apply(SI.2018.ct,1,var,na.rm=TRUE)) #7
+Discharge8cs <- t(SI.2018.rawc[,"Discharge",drop=FALSE]) #8
+
+MC.2015.rawc<-  MC.2015.rawc %>% filter(Date<'2015-10-01')
+MC.2015.rawc<-  MC.2015.rawc %>% filter(!(Date=='2015-07-05'))
+```
+
+
+```{r Data for Seasonal Plots}
+
+#Stroing data with the dates, April 13 is day 1
+MC.2015.rawc<-  MC.2015.rawc %>% filter(Date<'2015-10-01')
+MC.2015.rawc<-  MC.2015.rawc %>% filter(!(Date=='2015-07-05'))
+MC.2016.raw<- MC.2016.raw %>% select(!month) %>% select(!day)
+MC.2017.raw<- MC.2017.raw %>% select(!month) %>% select(!day)
+AllData<- rbind(MC.2015.rawc %>% mutate( num= c(85:171)) %>% mutate(Type= c("MC2015") ) %>% mutate(Area= c("MC")) %>% mutate(Year= c("2015")), 
+                   MC.2016.raw %>% mutate( num= c(1:204)) %>% mutate(Type= c("MC2016"))%>% mutate(Area= c("MC"))%>% mutate(Year= c("2016")),
+                   MC.2017.raw %>% mutate( num= c(58:177)) %>% mutate(Type= c("MC2017"))%>% mutate(Area= c("MC"))%>% mutate(Year= c("2017")),
+                   MC.2018.raw %>% mutate( num= c(50:171)) %>% mutate(Type= c("MC2018"))%>% mutate(Area= c("MC"))%>% mutate(Year= c("2018")),
+                   SI.2015.rawc %>% mutate( num= c(50:186)) %>% mutate(Type= c("SI2015"))%>% mutate(Area= c("SI"))%>% mutate(Year= c("2015")), 
+                   SI.2016.raw%>% mutate( num= c(1:185)) %>% mutate(Type= c("SI2016"))%>% mutate(Area= c("SI"))%>% mutate(Year= c("2016")),
+                   SI.2018.rawc%>% mutate( num= c(40:178)) %>% mutate(Type= c("SI2018"))%>% mutate(Area= c("SI"))%>% mutate(Year= c("2018")))
+
+#write.csv(AllData, "AllData.csv")
+
+```
+
+
+```{r Boxplots}
+#Showing ranges of each variable
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= NO3_mgL))+
+  labs(x= "Location and Year", y= "Nitrate (mgL)", title= "Nitrate Levels")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= FDOMqsu))+
+  labs(x= "Location and Year", y= "FDOM (qsu)", title= "FDOM Levels")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= CHLugL))+
+  labs(x= "Location and Year", y= "Chlorophyll-a (ugL)", title= "Chlorophyll-a Levels")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= BGAugL))+
+  labs(x= "Location and Year", y= "Blue-Green Algae (ugL)", title= "Blue-Green Algae Levels")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= Turb))+
+  labs(x= "Location and Year", y= "Turbidity (NTU)", title= "Turbidity Levels")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Type, y= Turb))+
+  labs(x= "Location and Year", y= "Turbidity (NTU)", title= "Turbidity Levels Zoomed In")+
+  scale_x_discrete(labels=c("Main Channel \n 2015", "Main Channel \n 2016", "Main Channel \n 2017", "Main Channel \n 2018", "Backwater \n 2015", "Backwater \n 2016", "Backwater \n 2018"))+ ylim(NA, 25)
+
+ggplot(AllData) + geom_boxplot(mapping= aes(x=Year, y= Discharge))+
+  labs(x= "Year", y= "Discharge (csu)", main= "Discharge Levels")+
+  scale_x_discrete(labels=c(" 2015", "2016", "2017", "2018"))
+  
+```
+
+
+```{r Variables for 2017}
+plotNMC7<-ggplot(data=AllDataMC7) + geom_line(mapping=aes(x=num, y=NO3_mgL), color= "#1C546B", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=.5, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Nitrate(mgL)")+
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Nitrate Levels")+
+  
+  theme(axis.title.y = element_text(size = 30))   +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotTMC7<-ggplot(data=AllDataMC7) + geom_line(mapping=aes(x=num, y=Turb), color= "#1C546B", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=.5, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity(NTU)")+
+   theme(axis.title.y = element_text(size = 30)) + 
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Turbidity Levels")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotCMC7<-ggplot(data=AllDataMC7) + geom_line(mapping=aes(x=num, y=CHLugL), color= "#1C546B", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=.5, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Chlorophyll-a(ugL)")+
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Chlorophyll-a Levels")+
+  
+  theme(axis.title.y = element_text(size = 30))   +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotBMC7<-ggplot(data=AllDataMC7) + geom_line(mapping=aes(x=num, y=BGAugL), color= "#1C546B", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=.25, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Blue-Green Algae(ugL)")+
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Blue-Green Algae Levels")+
+  
+  theme(axis.title.y = element_text(size = 30))   +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotFMC7<-ggplot(data=AllDataMC7) + geom_line(mapping=aes(x=num, y=FDOMqsu), color= "#1C546B", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=62, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "FDOM(qsu)")+
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("FDOM Levels")+
+  theme(axis.title.y = element_text(size = 30))   +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotNMC7
+plotTMC7
+plotCMC7
+plotBMC7
+plotFMC7
+```
+
+
+```{r Variable for Years}
+
+#MAIN Channel Nitrate for each year
+AllDataMC<-AllData %>% filter(Area=='MC')
+plotNMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=NO3_mgL, color= Type), size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Nitrate \n (mgL)")+
+  theme(axis.title.x = element_blank()) +
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  #ggtitle("Nitrate Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#MAIN Channel Turb for each year
+plotTMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=Turb/10, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=3, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity \n (10^1 NTU)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  scale_y_continuous(labels=scaleFUN) +
+  
+  theme(axis.title.x = element_blank()) +
+   theme(legend.position= "none") +
+  #ggtitle("Turbidity Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#MAIN Turb zoomed in
+plotTZMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=Turb/100, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity \n (10^2 NTU)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  scale_y_continuous(labels=scaleFUN) +
+  
+  ylim(-.05,.30)+
+  #ylim(-.05,.3)+
+  #theme(axis.title.x = element_blank()) +
+   theme(legend.position= "none") +
+  #ggtitle("Turbidity Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+
+#MAIN Channel BGA for each year
+plotBMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=BGAugL, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Blue-Green \n Algae (ugL)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank() ) +
+   theme(legend.position= "none") +
+ # ggtitle("Blue-Green Algae Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#MAIN Channel CHL for each year
+plotCMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=CHLugL/10, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Chlorophyll-a \n (10^1 ugL)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  scale_y_continuous(labels=scaleFUN) +
+  
+  theme(axis.title.x = element_blank()) +
+   theme(legend.position= "none") +
+  #ggtitle("Chlorophyll-a Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#MAIN Channel FDOM for each year
+plotFMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=FDOMqsu/100, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=35, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "FDOM \n (10^2 qsu)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  
+  theme(axis.title.x = element_blank()) +
+  #ggtitle("FDOM Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotDMC<-ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=Discharge/100000, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13, 19, 50, 80, 111, 142, 171)+15), y=.1, label=c( "April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Discharge \n (10^5 cfu)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  #theme(axis.title.x = element_blank()) +
+  #ggtitle("Discharge Levels Each Year")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())+
+  ylim(-.1,NA)
+
+grid.arrange(plotBMC, plotFMC, plotCMC,plotNMC,plotTZMC , plotDMC, nrow=3)
+#Need to move dates, remove november
+
+plotDMC
+
+scaleFUN <- function(x) sprintf("%.1f", x)
+```
+
+```{r Variable over BW years}
+#BACK Nitrate each year
+AllDataSI<-AllData %>% filter(Area=='SI')
+plotNSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=NO3_mgL, color= Type), size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  
+  labs(x= "Month", y= "Nitrate \n (mgL)")+
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  
+  #ggtitle("Nitrate Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+
+#BACK Turb each year
+plotTSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=Turb, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity \n (NTU)") +
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  
+  #ggtitle("Turbidity Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#BACK Turb Zoomed in each year
+plotTZSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=Turb, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity \n (NTU)")+
+  scale_y_continuous(labels=scaleFUN) +
+  #theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  ylim(-.5, 9) +
+  #ggtitle("Turbidity Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#BACK BGA each year
+plotBSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=BGAugL, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  labs(x= "Month", y= "Blue-Green \n Algae (ugL)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  
+  #ggtitle("Blue-Green Algae Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#BACK CHL each year
+plotCSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=CHLugL/10, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+ # annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Chlorophyll-a \n (10^1 ugL)")+
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  #ggtitle("Chlorophyll-a Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#BACK FDOM
+plotFSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=FDOMqsu/100, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  #annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=30, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  
+  scale_y_continuous(labels=scaleFUN) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.position= "none") +
+  labs(x= "Month", y= "FDOM \n (10^2 qsu)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#009E73"), name= "Year", labels=c("2015", "2016", "2018")) +
+  #ggtitle("FDOM Levels Each Year in the Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+plotDSI<-ggplot(data=AllDataSI) + geom_line(mapping=aes(x=num, y=Discharge/100000, color= Type), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Discharge \n (10^5 cfu)")+
+  scale_color_manual(values= c("#999999", "#E69F00",  "#009E73"), name= "Year", labels=c("2015", "2016",  "2018")) +
+ theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  #theme(axis.title.x = element_blank()) +
+  #ggtitle("Discharge Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())+
+  ylim(-.1,NA)
+plotDSI
+grid.arrange(plotBSI, plotFSI, plotCSI,plotNSI,plotTZSI , plotDSI, nrow=3)
+```
+
+
+```{r Pairs Each Year}
+AllDataMC5<-AllData %>% filter(Type=='MC2015')
+AllDataMC6<-AllData %>% filter(Type=='MC2016')
+AllDataMC7<-AllData %>% filter(Type=='MC2017')
+AllDataMC8<-AllData %>% filter(Type=='MC2018')
+AllDataSI5<-AllData %>% filter(Type=='SI2015')
+AllDataSI6<-AllData %>% filter(Type=='SI2016')
+AllDataSI8<-AllData %>% filter(Type=='SI2018')
+
+PairGraphsBC<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=CHLugL), color=  "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=BGAugL*10), color= "#0072B2", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Chlorophyll-a",
+    sec.axis = sec_axis(~./10, name="Blue-Green Algae (ugL)")
+  ) + 
+  ggtitle(paste("Chlorophyll-a and Blue-Green Algae in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color =  "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#0072B2", size=13)
+  ) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())+ 
+    labs(x="Month")
+}
+#"#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"
+
+PairGraphsBC(AllDataMC5, '2015', 'Main Channel')
+PairGraphsBC(AllDataMC6, '2016', 'Main Channel')
+PairGraphsBC(AllDataMC7, '2017', 'Main Channel')
+PairGraphsBC(AllDataMC8, '2018', 'Main Channel')
+PairGraphsBC(AllDataSI5, '2015', 'Backwater')
+PairGraphsBC(AllDataSI6, '2016', 'Backwater')
+PairGraphsBC(AllDataSI8, '2018', 'Backwater')
+
+
+
+#Scale is 50 for BW, 10 for MC
+PairGraphsBF<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=FDOMqsu), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=BGAugL*50+100), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=95, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "FDOM (qsu)",
+    sec.axis = sec_axis(~(.-100)/50, name="Blue-Green Algae (ugL)")
+  ) + 
+  ggtitle(paste("FDOM and Blue-Green Algae in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsBF(AllDataMC5, '2015', 'Main Channel')
+PairGraphsBF(AllDataMC6, '2016', 'Main Channel')
+PairGraphsBF(AllDataMC7, '2017', 'Main Channel')
+PairGraphsBF(AllDataMC8, '2018', 'Main Channel')
+PairGraphsBF(AllDataSI5, '2015', 'Backwater')
+PairGraphsBF(AllDataSI6, '2016', 'Backwater')
+PairGraphsBF(AllDataSI8, '2018', 'Backwater')
+
+PairGraphsBN<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=NO3_mgL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=BGAugL), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Nitrate (qsu)",
+    sec.axis = sec_axis(~., name="Blue-Green Algae (ugL)")
+  ) + 
+  ggtitle(paste("Nitrate and Blue-Green Algae in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsBN(AllDataMC5, '2015', 'Main Channel')
+PairGraphsBN(AllDataMC6, '2016', 'Main Channel')
+PairGraphsBN(AllDataMC7, '2017', 'Main Channel')
+PairGraphsBN(AllDataMC8, '2018', 'Main Channel')
+PairGraphsBN(AllDataSI5, '2015', 'Backwater')
+PairGraphsBN(AllDataSI6, '2016', 'Backwater')
+PairGraphsBN(AllDataSI8, '2018', 'Backwater')
+
+PairGraphsBT<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Turb), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=BGAugL+5), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Turbidity (NTU)",
+    sec.axis = sec_axis(~.-5, name="Blue-Green Algae (ugL)")
+  ) + 
+    ylim(NA, 15)+
+  ggtitle(paste("Turbidity and Blue-Green Algae in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsBT(AllDataMC5, '2015', 'Main Channel')
+PairGraphsBT(AllDataMC6, '2016', 'Main Channel')
+PairGraphsBT(AllDataMC7, '2017', 'Main Channel')
+PairGraphsBT(AllDataMC8, '2018', 'Main Channel')
+PairGraphsBT(AllDataSI5, '2015', 'Backwater')
+PairGraphsBT(AllDataSI6, '2016', 'Backwater')
+PairGraphsBT(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsCF<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=CHLugL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(FDOMqsu-100)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Chlorophyll (ugL)",
+    sec.axis = sec_axis(~.+100, name="FDOM (qsu)")
+  ) + 
+    
+  ggtitle(paste("FDOM and Chlorophyll-a in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsCF(AllDataMC5, '2015', 'Main Channel')
+PairGraphsCF(AllDataMC6, '2016', 'Main Channel')
+PairGraphsCF(AllDataMC7, '2017', 'Main Channel')
+PairGraphsCF(AllDataMC8, '2018', 'Main Channel')
+PairGraphsCF(AllDataSI5, '2015', 'Backwater')
+PairGraphsCF(AllDataSI6, '2016', 'Backwater')
+PairGraphsCF(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsCN<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=CHLugL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(NO3_mgL*10)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Chlorophyll-a (ugL)",
+    sec.axis = sec_axis(~./10, name="Nitrate (mgL)")
+  ) + 
+    
+  ggtitle(paste("Chlorophyll-a and Nitrate in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsCN(AllDataMC5, '2015', 'Main Channel')
+PairGraphsCN(AllDataMC6, '2016', 'Main Channel')
+PairGraphsCN(AllDataMC7, '2017', 'Main Channel')
+PairGraphsCN(AllDataMC8, '2018', 'Main Channel')
+PairGraphsCN(AllDataSI5, '2015', 'Backwater')
+PairGraphsCN(AllDataSI6, '2016', 'Backwater')
+PairGraphsCN(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsCT<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=CHLugL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(Turb*4)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Chlorophyll-a (ugL)",
+    sec.axis = sec_axis(~./4, name="Turbidity (NTU)")
+  ) + 
+    #ylim(NA,100)+ #For BW 2018
+  ggtitle(paste("Chlorophyll-a and Turbidty in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsCT(AllDataMC5, '2015', 'Main Channel')
+PairGraphsCT(AllDataMC6, '2016', 'Main Channel')
+PairGraphsCT(AllDataMC7, '2017', 'Main Channel')
+PairGraphsCT(AllDataMC8, '2018', 'Main Channel')
+PairGraphsCT(AllDataSI5, '2015', 'Backwater')
+PairGraphsCT(AllDataSI6, '2016', 'Backwater')
+PairGraphsCT(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsFN<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=FDOMqsu), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=((NO3_mgL*5)+100)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=100, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "FDOM (qsu)",
+    sec.axis = sec_axis(~(.-100)/5, name="Nitrate (mgL)")
+  ) + 
+    
+  ggtitle(paste("FDOM and Nitrate in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsFN(AllDataMC5, '2015', 'Main Channel')
+PairGraphsFN(AllDataMC6, '2016', 'Main Channel')
+PairGraphsFN(AllDataMC7, '2017', 'Main Channel')
+PairGraphsFN(AllDataMC8, '2018', 'Main Channel')
+PairGraphsFN(AllDataSI5, '2015', 'Backwater')
+PairGraphsFN(AllDataSI6, '2016', 'Backwater')
+PairGraphsFN(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsFT<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=FDOMqsu), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(Turb*10)+20), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=100, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "FDOM (qsu)",
+    sec.axis = sec_axis(~(.-20)/10, name="Turbidity (NTU)")
+  ) + 
+    #ylim(NA, 250)+ #For BW 2018
+  ggtitle(paste("FDOM and Turbidity in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsFT(AllDataMC5, '2015', 'Main Channel')
+PairGraphsFT(AllDataMC6, '2016', 'Main Channel')
+PairGraphsFT(AllDataMC7, '2017', 'Main Channel')
+PairGraphsFT(AllDataMC8, '2018', 'Main Channel')
+PairGraphsFT(AllDataSI5, '2015', 'Backwater')
+PairGraphsFT(AllDataSI6, '2016', 'Backwater')
+PairGraphsFT(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsNT<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=NO3_mgL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(Turb/4)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Nitrate (mgL)",
+    sec.axis = sec_axis(~./4, name="Turbidity (NTU)")
+  ) + 
+  
+  ggtitle(paste("Nitrate and Turbidity in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsNT(AllDataMC5, '2015', 'Main Channel')
+PairGraphsNT(AllDataMC6, '2016', 'Main Channel')
+PairGraphsNT(AllDataMC7, '2017', 'Main Channel')
+PairGraphsNT(AllDataMC8, '2018', 'Main Channel')
+PairGraphsNT(AllDataSI5, '2015', 'Backwater')
+PairGraphsNT(AllDataSI6, '2016', 'Backwater')
+PairGraphsNT(AllDataSI8, '2018', 'Backwater')
+```
+
+
+```{r Pairs correlations}
+#Blue-green algae, Chl
+cor(AllDataMC5$CHLugL, AllDataMC5$BGAugL)
+cor(AllDataMC6$CHLugL, AllDataMC6$BGAugL)
+cor(AllDataMC7$CHLugL, AllDataMC7$BGAugL)
+cor(AllDataMC8$CHLugL, AllDataMC8$BGAugL)
+cor(AllDataSI5$CHLugL, AllDataSI5$BGAugL)
+cor(AllDataSI6$CHLugL, AllDataSI6$BGAugL)
+cor(AllDataSI8$CHLugL, AllDataSI8$BGAugL)
+
+#Blue-green algae, FDOM
+cor(AllDataMC5$FDOMqsu, AllDataMC5$BGAugL)
+cor(AllDataMC6$FDOMqsu, AllDataMC6$BGAugL)
+cor(AllDataMC7$FDOMqsu, AllDataMC7$BGAugL)
+cor(AllDataMC8$FDOMqsu, AllDataMC8$BGAugL)
+cor(AllDataSI5$FDOMqsu, AllDataSI5$BGAugL)
+cor(AllDataSI6$FDOMqsu, AllDataSI6$BGAugL)
+cor(AllDataSI8$FDOMqsu, AllDataSI8$BGAugL)
+
+#Blue-green algae, nitrate
+cor(AllDataMC5$NO3_mgL, AllDataMC5$BGAugL)
+cor(AllDataMC6$NO3_mgL, AllDataMC6$BGAugL)
+cor(AllDataMC7$NO3_mgL, AllDataMC7$BGAugL)
+cor(AllDataMC8$NO3_mgL, AllDataMC8$BGAugL)
+cor(AllDataSI5$NO3_mgL, AllDataSI5$BGAugL)
+cor(AllDataSI6$NO3_mgL, AllDataSI6$BGAugL)
+cor(AllDataSI8$NO3_mgL, AllDataSI8$BGAugL)
+
+#Blue-green algae, turbidity
+cor(AllDataMC5$Turb, AllDataMC5$BGAugL)
+cor(AllDataMC6$Turb, AllDataMC6$BGAugL)
+cor(AllDataMC7$Turb, AllDataMC7$BGAugL)
+cor(AllDataMC8$Turb, AllDataMC8$BGAugL)
+cor(AllDataSI5$Turb, AllDataSI5$BGAugL)
+cor(AllDataSI6$Turb, AllDataSI6$BGAugL)
+cor(AllDataSI8$Turb, AllDataSI8$BGAugL)
+
+#Blue-green algae, discharge
+cor(AllDataMC5$Discharge, AllDataMC5$BGAugL)
+cor(AllDataMC6$Discharge, AllDataMC6$BGAugL)
+cor(AllDataMC7$Discharge, AllDataMC7$BGAugL)
+cor(AllDataMC8$Discharge, AllDataMC8$BGAugL)
+cor(AllDataSI5$Discharge, AllDataSI5$BGAugL)
+cor(AllDataSI6$Discharge, AllDataSI6$BGAugL)
+cor(AllDataSI8$Discharge, AllDataSI8$BGAugL)
+
+#CHL, FDOM
+cor(AllDataMC5$CHLugL, AllDataMC5$FDOMqsu)
+cor(AllDataMC6$CHLugL, AllDataMC6$FDOMqsu)
+cor(AllDataMC7$CHLugL, AllDataMC7$FDOMqsu)
+cor(AllDataMC8$CHLugL, AllDataMC8$FDOMqsu)
+cor(AllDataSI5$CHLugL, AllDataSI5$FDOMqsu)
+cor(AllDataSI6$CHLugL, AllDataSI6$FDOMqsu)
+cor(AllDataSI8$CHLugL, AllDataSI8$FDOMqsu)
+
+#CHL, Nitrate
+cor(AllDataMC5$CHLugL, AllDataMC5$NO3_mgL)
+cor(AllDataMC6$CHLugL, AllDataMC6$NO3_mgL)
+cor(AllDataMC7$CHLugL, AllDataMC7$NO3_mgL)
+cor(AllDataMC8$CHLugL, AllDataMC8$NO3_mgL)
+cor(AllDataSI5$CHLugL, AllDataSI5$NO3_mgL)
+cor(AllDataSI6$CHLugL, AllDataSI6$NO3_mgL)
+cor(AllDataSI8$CHLugL, AllDataSI8$NO3_mgL)
+
+#CHL, Turb
+cor(AllDataMC5$CHLugL, AllDataMC5$Turb)
+cor(AllDataMC6$CHLugL, AllDataMC6$Turb)
+cor(AllDataMC7$CHLugL, AllDataMC7$Turb)
+cor(AllDataMC8$CHLugL, AllDataMC8$Turb)
+cor(AllDataSI5$CHLugL, AllDataSI5$Turb)
+cor(AllDataSI6$CHLugL, AllDataSI6$Turb)
+cor(AllDataSI8$CHLugL, AllDataSI8$Turb)
+
+#CHL, Discharge
+cor(AllDataMC5$CHLugL, AllDataMC5$Discharge)
+cor(AllDataMC6$CHLugL, AllDataMC6$Discharge)
+cor(AllDataMC7$CHLugL, AllDataMC7$Discharge)
+cor(AllDataMC8$CHLugL, AllDataMC8$Discharge)
+cor(AllDataSI5$CHLugL, AllDataSI5$Discharge)
+cor(AllDataSI6$CHLugL, AllDataSI6$Discharge)
+cor(AllDataSI8$CHLugL, AllDataSI8$Discharge)
+
+#FDOM, Nitrate
+
+
+#FDOM, turb
+
+#FDOM, Discharge
+
+#Nitrate, turb
+
+#Nitrate, discharge
+
+#Turb, discharge
+
+
+```
+
+```{r MC vs BW}
+
+#Main channel vs backwater for each variable, for each year
+AllData5<-AllData %>% filter(Year=='2015')
+AllData6<-AllData %>% filter(Year=='2016')
+AllData8<-AllData %>% filter(Year=='2018')
+
+LocationN03<- function(datax, yr){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=NO3_mgL, color = Area), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Nitrate (mgL)")+
+  ggtitle(paste("Nitrate in", yr,  "in the Main channel and Backwater", sep=" "))+
+    scale_color_manual(values= c("#E69F00","#56B4E9" ), name= "Location", labels=c("Main Channel", "Backwater")) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+LocationN03(AllData5, "2015")
+LocationN03(AllData6, "2016")
+LocationN03(AllData8, "2018")
+
+
+LocationFDOM<- function(datax, yr){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=FDOMqsu, color = Area), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=90, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "FDOM (qsu)")+
+  ggtitle(paste("FDOM in", yr,  "in the Main channel and Backwater", sep=" "))+
+    scale_color_manual(values= c("#E69F00","#56B4E9" ), name= "Location", labels=c("Main Channel", "Backwater")) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+LocationFDOM(AllData5, "2015")
+LocationFDOM(AllData6, "2016")
+LocationFDOM(AllData8, "2018")
+
+
+LocationCHL<- function(datax, yr){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=CHLugL, color = Area), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Chlorophyll-a (ugL)")+
+  ggtitle(paste("Chlorophyll-a Levels for Each Location in", yr, sep=" "))+
+    scale_color_manual(values= c("#E69F00","#56B4E9" ), name= "Location", labels=c("Main Channel", "Backwater")) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+LocationCHL(AllData5, "2015")
+LocationCHL(AllData6, "2016")
+LocationCHL(AllData8, "2018")
+
+
+LocationBGA<- function(datax, yr){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=BGAugL, color = Area), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Blue-Green Algae (ugL)")+
+  ggtitle(paste("Blue-Green Algae in", yr,  "in the Main channel and Backwater", sep=" "))+
+    scale_color_manual(values= c("#E69F00","#56B4E9" ), name= "Location", labels=c("Main Channel", "Backwater")) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+LocationBGA(AllData5, "2015")
+LocationBGA(AllData6, "2016")
+LocationBGA(AllData8, "2018")
+
+
+
+LocationTurb<- function(datax, yr){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Turb, color = Area), size=1) + 
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=0, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Turbidity (NTU)")+
+  ggtitle(paste("Turbidity in", yr,  "in the Main channel and Backwater", sep=" "))+
+    scale_color_manual(values= c("#E69F00","#56B4E9" ), name= "Location", labels=c("Main Channel", "Backwater")) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+LocationTurb(AllData5, "2015")
+LocationTurb(AllData6, "2016")
+LocationTurb(AllData8, "2018")
+
+
+```
+
+```{r MC BW Correlations}
+AllDataSI5Short<- AllDataSI5 %>% filter(!(Date<'2015-07-06'), !(Date>'2015-09-30'))
+AllDataMC6Short<- AllDataMC6 %>% filter( !(Date>'2016-10-14'))
+AllDataSI8Short<- AllDataSI8 %>% filter(!(Date<'2018-06-01'), !(Date>'2018-09-30'))
+
+cor(AllDataMC5$BGAugL, AllDataSI5Short$BGAugL)
+cor(AllDataMC6Short$BGAugL, AllDataSI6$BGAugL)
+cor(AllDataMC8$BGAugL, AllDataSI8Short$BGAugL) #Not strong
+
+cor(AllDataMC5$CHLugL, AllDataSI5Short$CHLugL)
+cor(AllDataMC6Short$CHLugL, AllDataSI6$CHLugL)
+cor(AllDataMC8$CHLugL, AllDataSI8Short$CHLugL) #Not strong
+
+cor(AllDataMC5$FDOMqsu, AllDataSI5Short$FDOMqsu) #Not strong
+cor(AllDataMC6Short$FDOMqsu, AllDataSI6$FDOMqsu)#Strong
+cor(AllDataMC8$FDOMqsu, AllDataSI8Short$FDOMqsu) #Strong
+
+cor(AllDataMC5$NO3_mgL, AllDataSI5Short$NO3_mgL) 
+cor(AllDataMC6Short$NO3_mgL, AllDataSI6$NO3_mgL)
+cor(AllDataMC8$NO3_mgL, AllDataSI8Short$NO3_mgL)#Strong
+
+cor(AllDataMC5$Turb, AllDataSI5Short$Turb)
+cor(AllDataMC6Short$Turb, AllDataSI6$Turb)
+cor(AllDataMC8$Turb, AllDataSI8Short$Turb) #Not strong
+```
+
+
+```{r Discharge plots}
+
+#Discharge vs each constituent for each year/location
+PairGraphsDB<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Discharge), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(BGAugL*10000)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Discharge (csu)",
+    sec.axis = sec_axis(~./10000, name="Blue-Green Algae (ugL)")
+  ) + 
+  
+  ggtitle(paste("Blue-Green Algae and Discharge in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsDB(AllDataMC5, '2015', 'Main Channel')
+PairGraphsDB(AllDataMC6, '2016', 'Main Channel')
+PairGraphsDB(AllDataMC7, '2017', 'Main Channel')
+PairGraphsDB(AllDataMC8, '2018', 'Main Channel')
+PairGraphsDB(AllDataSI5, '2015', 'Backwater')
+PairGraphsDB(AllDataSI6, '2016', 'Backwater')
+PairGraphsDB(AllDataSI8, '2018', 'Backwater')
+
+PairGraphsDC<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Discharge), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(CHLugL*500)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Discharge (csu)",
+    sec.axis = sec_axis(~./500, name="Chlorophyll-a (ugL)")
+  ) + 
+  
+  ggtitle(paste("Chlorophyll-a and Discharge in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsDC(AllDataMC5, '2015', 'Main Channel')
+PairGraphsDC(AllDataMC6, '2016', 'Main Channel')
+PairGraphsDC(AllDataMC7, '2017', 'Main Channel')
+PairGraphsDC(AllDataMC8, '2018', 'Main Channel')
+PairGraphsDC(AllDataSI5, '2015', 'Backwater')
+PairGraphsDC(AllDataSI6, '2016', 'Backwater')
+PairGraphsDC(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsDF<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Discharge), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(FDOMqsu*250)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Discharge (csu)",
+    sec.axis = sec_axis(~./250, name="FDOM (qsu)")
+  ) + 
+  
+  ggtitle(paste("FDOM and Discharge in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsDF(AllDataMC5, '2015', 'Main Channel')
+PairGraphsDF(AllDataMC6, '2016', 'Main Channel')
+PairGraphsDF(AllDataMC7, '2017', 'Main Channel')
+PairGraphsDF(AllDataMC8, '2018', 'Main Channel')
+PairGraphsDF(AllDataSI5, '2015', 'Backwater')
+PairGraphsDF(AllDataSI6, '2016', 'Backwater')
+PairGraphsDF(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsDN<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Discharge), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(NO3_mgL*10000)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Discharge (csu)",
+    sec.axis = sec_axis(~./10000, name="Nitrate (mgL)")
+  ) + 
+  
+  ggtitle(paste("Nitrate and Discharge in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsDN(AllDataMC5, '2015', 'Main Channel')
+PairGraphsDN(AllDataMC6, '2016', 'Main Channel')
+PairGraphsDN(AllDataMC7, '2017', 'Main Channel')
+PairGraphsDN(AllDataMC8, '2018', 'Main Channel')
+PairGraphsDN(AllDataSI5, '2015', 'Backwater')
+PairGraphsDN(AllDataSI6, '2016', 'Backwater')
+PairGraphsDN(AllDataSI8, '2018', 'Backwater')
+
+
+PairGraphsDT<- function(datax, yr, location){
+  ggplot(data=datax) + geom_line(mapping=aes(x=num, y=Discharge), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=(Turb*5000)), color= "#E69F00", size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  scale_y_continuous(
+    name = "Discharge (csu)",
+    sec.axis = sec_axis(~./5000, name="Turbidity (NTU)")
+  ) + 
+  
+  ggtitle(paste("Turbidity and Discharge in", yr,  "in the", location, sep=" "))+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+    labs(x="Month") +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+}
+
+PairGraphsDF(AllDataMC5, '2015', 'Main Channel')
+PairGraphsDF(AllDataMC6, '2016', 'Main Channel')
+PairGraphsDF(AllDataMC7, '2017', 'Main Channel')
+PairGraphsDF(AllDataMC8, '2018', 'Main Channel')
+PairGraphsDF(AllDataSI5, '2015', 'Backwater')
+PairGraphsDF(AllDataSI6, '2016', 'Backwater')
+PairGraphsDF(AllDataSI8, '2018', 'Backwater')
+
+
+ggplot(data=AllDataMC) + geom_line(mapping=aes(x=num, y=Discharge, color= Type), size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=10000, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Discharge (csu)")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  
+  ggtitle("Discharge Levels Each Year in the Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+```
+
+
+
+```{r Relationship of Variables MC}
+#Dotplot with relationships of pairs
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=BGAugL, y=CHLugL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Chlorophyll-a (ugL)", title= "Chlorophyll-a vs Blue-Green Algae in the Main Channel")+
+  geom_smooth(aes(x=BGAugL, y=CHLugL, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=BGAugL, y=FDOMqsu, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="FDOM (qsu)", title= "FDOM vs Blue-Green Algae in the Main Channel")+
+  geom_smooth(aes(x=BGAugL, y=FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=BGAugL, y=NO3_mgL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Blue-Green Algae in the Main Channel")+
+  geom_smooth(aes(x=BGAugL, y=NO3_mgL, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=BGAugL, y=Turb, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Blue-Green Algae in the Main Channel")+
+  geom_smooth(aes(x=BGAugL, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA,30)
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=BGAugL, y=Discharge, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Discharge (csu)", title= "Discharge vs Blue-Green Algae in the Main Channel")+
+  geom_smooth(aes(x=BGAugL, y=Discharge, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=CHLugL, y=FDOMqsu, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="FDOM (qsu)", title= "FDOM vs Chlorophyll-a in the Main Channel")+
+  geom_smooth(aes(x=CHLugL, FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=CHLugL, y=NO3_mgL, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Chlorophyll-a in the Main Channel")+
+  geom_smooth(aes(x=CHLugL, NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=CHLugL, y=Turb, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Chlorophyll-a in the Main Channel")+
+  geom_smooth(aes(x=CHLugL, Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 35)
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=CHLugL, y=Discharge, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Discharge (csu)", title= "Discharge vs Chlorophyll-a in the Main Channel")+
+  geom_smooth(aes(x=CHLugL, Discharge, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=FDOMqsu, y=NO3_mgL, color=Year))+
+  labs(x="FDOM (qsu)", y= "Nitrate (mgL)", title= "Nitrate vs FDOM in the Main Channel")+
+  geom_smooth(aes(x=FDOMqsu, y=NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Turb, color=Year))+
+  labs(x="FDOM (qsu)", y= "Turbidity (NTU)", title= "Turbidity vs FDOM in the Main Channel")+
+  geom_smooth(aes(x=FDOMqsu, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 30)
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Discharge, color=Year))+
+  labs(x="FDOM (qsu)", y= "Discharge (csu)", title= "Discharge vs FDOM in the Main Channel")+
+  geom_smooth(aes(x=FDOMqsu, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Turb, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Turbidity (NTU)", title= "Turbidity vs Nitrate in the Main Channel")+
+  geom_smooth(aes(x=NO3_mgL, y=Turb, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 25)
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Discharge, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Discharge (csu)", title= "Discharge vs Nitrate in the Main Channel")+
+  geom_smooth(aes(x=NO3_mgL, y=Discharge, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataMC) +
+  geom_point(mapping=aes(x=Turb, y=Discharge, color=Year))+
+  labs(x="Turbidity (NTU)", y= "Discharge (csu)", title= "Discharge vs Turbidity in the Main Channel")+
+  geom_smooth(aes(x=Turb, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  xlim(NA, 30)
+```
+
+```{r Relationship of Variables BW}
+#Dotplots of pairs of variables 
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=BGAugL, y=CHLugL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Chlorophyll-a (ugL)", title= "Chlorophyll-a vs Blue-Green Algae in the Backwater")+
+  geom_smooth(aes(x=BGAugL, y=CHLugL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=BGAugL, y=FDOMqsu, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="FDOM (qsu)", title= "FDOM vs Blue-Green Algae in the Backwater")+
+  geom_smooth(aes(x=BGAugL, y=FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=BGAugL, y=NO3_mgL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Blue-Green Algae in the Backwater")+
+  geom_smooth(aes(x=BGAugL, y=NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=BGAugL, y=Turb, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Blue-Green Algae in the Backwater")+
+  geom_smooth(aes(x=BGAugL, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA,30)
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=BGAugL, y=Discharge, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Discharge (csu)", title= "Discharge vs Blue-Green Algae in the Backwater")+
+  geom_smooth(aes(x=BGAugL, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=CHLugL, y=FDOMqsu, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="FDOM (qsu)", title= "FDOM vs Chlorophyll-a in the Backwater")+
+  geom_smooth(aes(x=CHLugL, FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=CHLugL, y=NO3_mgL, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Chlorophyll-a in the Backwater")+
+  geom_smooth(aes(x=CHLugL, NO3_mgL, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=CHLugL, y=Turb, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Chlorophyll-a in the Backwater")+
+  geom_smooth(aes(x=CHLugL, Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 35)
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=CHLugL, y=Discharge, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Discharge (csu)", title= "Discharge vs Chlorophyll-a in the Backwater")+
+  geom_smooth(aes(x=CHLugL, Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=FDOMqsu, y=NO3_mgL, color=Year))+
+  labs(x="FDOM (qsu)", y= "Nitrate (mgL)", title= "Nitrate vs FDOM in the Backwater")+
+  geom_smooth(aes(x=FDOMqsu, y=NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Turb, color=Year))+
+  labs(x="FDOM (qsu)", y= "Turbidity (NTU)", title= "Turbidity vs FDOM in the Backwater")+
+  geom_smooth(aes(x=FDOMqsu, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 30)
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Discharge, color=Year))+
+  labs(x="FDOM (qsu)", y= "Discharge (csu)", title= "Discharge vs FDOM in the Backwater")+
+  geom_smooth(aes(x=FDOMqsu, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Turb, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Turbidity (NTU)", title= "Turbidity vs Nitrate in the Backwater")+
+  geom_smooth(aes(x=NO3_mgL, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 25)
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Discharge, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Discharge (csu)", title= "Discharge vs Nitrate in the Backwater")+
+  geom_smooth(aes(x=NO3_mgL, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllDataSI) +
+  geom_point(mapping=aes(x=Discharge, y=Turb, color=Year))+
+  labs(x="Turbidity (NTU)", y= "Discharge (csu)", title= "Discharge vs Turbidity in the Backwater")+
+  geom_smooth(aes(x=Discharge, y=Turb, color=Year),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 10)
+```
+
+```{r Relationship of Variables Both}
+#Dotplots for both
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=BGAugL, y=CHLugL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Chlorophyll-a (ugL)", title= "Chlorophyll-a vs Blue-Green Algae for All Locations")+
+  geom_smooth(aes(x=BGAugL, y=CHLugL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=BGAugL, y=FDOMqsu, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="FDOM (qsu)", title= "FDOM vs Blue-Green Algae for All Locations")+
+  geom_smooth(aes(x=BGAugL, y=FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=BGAugL, y=NO3_mgL, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Blue-Green Algae for All Locations")+
+  geom_smooth(aes(x=BGAugL, y=NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=BGAugL, y=Turb, color=Year))+
+  labs(x="Blue-Green Algae (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Blue-Green Algae for All Locations")+
+  geom_smooth(aes(x=BGAugL, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA,30)
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=Discharge, y=BGAugL, color=Year))+
+  labs(x= "Discharge (csu)", y= "Blue-Green Algae (ugL)", title= "Discharge vs Blue-Green Algae for All Locations")+
+  geom_smooth(aes(x=Discharge, y=BGAugL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#0072B2", "#56B4E9", "#009E73", "#D55E00"))+
+  annotate(geom="label", x=100000, y=4, label="r = -0.41")
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=CHLugL, y=FDOMqsu, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="FDOM (qsu)", title= "FDOM vs Chlorophyll-a for All Locations")+
+  geom_smooth(aes(x=CHLugL, FDOMqsu),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=CHLugL, y=NO3_mgL, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Nitrate (mgL)", title= "Nitrate vs Chlorophyll-a for All Locations")+
+  geom_smooth(aes(x=CHLugL, NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=CHLugL, y=Turb, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Turbidity (NTU)", title= "Turbidity vs Chlorophyll-a for All Locations")+
+  geom_smooth(aes(x=CHLugL, Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 35)
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=CHLugL, y=Discharge, color=Year))+
+  labs(x="Chlorophyll-a (ugL)", y="Discharge (csu)", title= "Discharge vs Chlorophyll-a for All Locations")+
+  geom_smooth(aes(x=CHLugL, Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=FDOMqsu, y=NO3_mgL, color=Year))+
+  labs(x="FDOM (qsu)", y= "Nitrate (mgL)", title= "Nitrate vs FDOM for All Locations")+
+  geom_smooth(aes(x=FDOMqsu, y=NO3_mgL),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Turb, color=Year))+
+  labs(x="FDOM (qsu)", y= "Turbidity (NTU)", title= "Turbidity vs FDOM for All Locations")+
+  geom_smooth(aes(x=FDOMqsu, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 30)
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=FDOMqsu, y=Discharge, color=Year))+
+  labs(x="FDOM (qsu)", y= "Discharge (csu)", title= "Discharge vs FDOM for All Locations")+
+  geom_smooth(aes(x=FDOMqsu, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Turb, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Turbidity (NTU)", title= "Turbidity vs Nitrate for All Locations")+
+  geom_smooth(aes(x=NO3_mgL, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))+
+  ylim(NA, 25)
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=NO3_mgL, y=Discharge, color=Year))+
+  labs(x="Nitrate (mgL)", y= "Discharge (csu)", title= "Discharge vs Nitrate for All Locations")+
+  geom_smooth(aes(x=NO3_mgL, y=Discharge),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442"))
+
+ggplot(data=AllData) +
+  geom_point(mapping=aes(x=Discharge, y=Turb, color=Year))+
+  labs(x= "Discharge (csu)", y= "Turbidity (NTU)", title= "Discharge vs Turbidity")+
+  geom_smooth(aes(x=Discharge, y=Turb),method='lm', se=FALSE)+
+  scale_color_manual(values= c("#0072B2", "#56B4E9", "#009E73", "#D55E00"))+
+  ylim(NA, 25) +
+  annotate(geom="label", x=80000, y=22, label= "r = 0.12")
+
+#"#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"
+```
+
+```{r DFA}
+#Running DFA
+cntl.list = list(maxit=5000, allow.degen=FALSE )
+      dfa.model = list(A="zero", R="diagonal and unequal", m=4)
+      four.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+  
+      four.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      four.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      four.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      four.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      four.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      four.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      four.dfa.SI2018dis=MARSS(SI.2018c, model=dfa.model, control=cntl.list, covariates= Discharge8cs, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      #SAVE 'EM!
+saveRDS(four.dfa.MC2015, file="MC2015DFAfour.RData")
+saveRDS(four.dfa.MC2016, file="MC2016DFAfour.RData")
+saveRDS(four.dfa.MC2017, file="MC2017DFAfour.RData")
+saveRDS(four.dfa.MC2018, file="MC2018DFAfour.RData")
+saveRDS(four.dfa.SI2015, file="SI2015DFAfour.RData")
+saveRDS(four.dfa.SI2016, file="SI2017DFAfour.RData")
+saveRDS(four.dfa.SI2018, file="SI2018DFAfour.RData")
+
+#readRDS
+#qqy<-readRDS( file="SI2015DFAobj.RData")
+ 
+```    
+
+```{r Sample DFA Trendline Graph}
+SampTrends<- as.data.frame(t(MC.2017))
+SampTrends<-SampTrends %>% mutate(T1= mean('Turb', 'FDOMqsu', 'NO3_mgL')) %>% mutate(T2=mean('CHLugL', 'BGAugL'))
+SampTrends$T1= (SampTrends$Turb+SampTrends$FDOMqsu+SampTrends$NO3_mgL)/3
+SampTrends$T2= (SampTrends$CHLugL+ SampTrends$BGAugL)/2
+SampTrends<- SampTrends %>% mutate(num= c(58:177))
+
+ggplot(data=SampTrends) + geom_line(mapping=aes(x=num, y=T1), color= "black", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=-1.5, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend 1 ")+
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  
+  theme(axis.title.y = element_text(size = 30))   +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Trend 1")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+ggplot(data=SampTrends) + geom_line(mapping=aes(x=num, y=T2), color= "black", size=1) + 
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c( 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c( 50, 80, 111, 142)+15), y=-1.5, label=c(  "June", "July", "Aug", "Sept" ), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend 2 ")+
+  theme(axis.title.y = element_text(size = 30))   +
+  #theme(axis.title.x = element_blank()) +
+  #scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  theme(legend.position= "none") +
+  scale_y_continuous(labels=scaleFUN) +
+  ggtitle("Trend 2")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+```
+
+
+```{r DFA for 3 and 5 trends}
+dfa.model = list(A="zero", R="diagonal and unequal", m=3)
+three.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+  
+      three.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      three.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      three.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      three.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      three.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      three.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+      
+  dfa.model = list(A="zero", R="diagonal and unequal", m=5)    
+      five.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+  
+      five.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      five.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+      
+
+      #Compare AICc values
+      
+      #MC 2015
+      print("\n 2015")
+      one.dfa.MC2015$AICc
+      two.dfa.MC2015$AICc
+      three.dfa.MC2015$AICc
+      four.dfa.MC2015$AICc
+      five.dfa.MC2015$AICc #
+      five.dis.dfa.MC2015$AICc
+      
+      print("\n 2016")
+      #MC 2016
+      one.dfa.MC2016$AICc
+      two.dfa.MC2016$AICc
+      three.dfa.MC2016$AICc
+      four.dfa.MC2016$AICc
+      five.dfa.MC2016$AICc #
+      five.dis.dfa.MC2016$AICc
+      
+      #MC 2017
+      print("\n 2017")
+      one.dfa.MC2017$AICc
+      two.dfa.MC2017$AICc
+      three.dfa.MC2017$AICc
+      four.dfa.MC2017$AICc
+      five.dfa.MC2017$AICc #
+      five.dis.dfa.MC2017$AICc
+      
+      #MC 2018
+      print("\n 2018")
+      one.dfa.MC2018$AICc
+      two.dfa.MC2018$AICc
+      three.dfa.MC2018$AICc
+      four.dfa.MC2018$AICc
+      five.dfa.MC2018$AICc #
+      five.dis.dfa.MC2018$AICc
+      
+      #SI 2015
+      print("\n 2015")
+      one.dfa.SI2015$AICc
+      two.dfa.SI2015$AICc
+      three.dfa.SI2015$AICc
+      four.dfa.SI2015$AICc
+      five.dfa.SI2015$AICc #
+      five.dis.dfa.SI2015$AICc
+      
+      #SI 2016
+      print("\n 2016")
+      one.dfa.SI2016$AICc
+      two.dfa.SI2016$AICc
+      three.dfa.SI2016$AICc
+      four.dfa.SI2016$AICc #
+      five.dfa.SI2016$AICc
+      five.dis.dfa.SI2016$AICc
+      
+      #SI 2018
+      print("\n 2018")
+      one.dfa.SI2018$AICc
+      two.dfa.SI2018$AICc
+      three.dfa.SI2018$AICc
+      four.dfa.SI2018$AICc
+      five.dfa.SI2018$AICc #
+      five.dis.dfa.SI2018$AICc
+```
+
+```{r 1 and 2 trends}
+ dfa.model = list(A="zero", R="diagonal and unequal", m=1) 
+one.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+  
+      one.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      one.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      one.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      one.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      one.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      one.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+      
+  dfa.model = list(A="zero", R="diagonal and unequal", m=2)    
+      two.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+  
+      two.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      two.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      two.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      two.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      two.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      two.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, form="dfa",  z.score=TRUE, fit=TRUE)
+      
+  dfa.model = list(A="zero", R="diagonal and unequal", m=5)      
+      
+       five.dis.dfa.MC2015=MARSS(MC.2015c, model=dfa.model, control=cntl.list, covariates=Discharge5c, form="dfa", z.score=TRUE, fit=TRUE)
+  
+      five.dis.dfa.MC2016=MARSS(MC.2016, model=dfa.model, control=cntl.list, covariates=Discharge6,form="dfa",  z.score=TRUE, fit=TRUE) #132
+     
+      five.dis.dfa.MC2017=MARSS(MC.2017, model=dfa.model, control=cntl.list, covariates=Discharge7, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dis.dfa.MC2018=MARSS(MC.2018, model=dfa.model, control=cntl.list, covariates=Discharge8, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dis.dfa.SI2015=MARSS(SI.2015c, model=dfa.model, control=cntl.list, covariates=Discharge5cs, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dis.dfa.SI2016=MARSS(SI.2016, model=dfa.model, control=cntl.list, covariates=Discharge6s, form="dfa",  z.score=TRUE, fit=TRUE) 
+      
+      five.dis.dfa.SI2018=MARSS(SI.2018c, model=dfa.model, control=cntl.list, covariates=Discharge8cs, form="dfa",  z.score=TRUE, fit=TRUE)
+      
+      
+```
+
+
+```{r Get fits}
+get_DFA_fits <- function(MLEobj,dd=NULL,alpha=0.05) {
+  fits <- list() ## empty list for results
+  Ey <- MARSS:::MARSShatyt(MLEobj) ## extra stuff for var() calcs
+	ZZ <- coef(MLEobj, type="matrix")$Z ## model params
+	nn <- dim(Ey$ytT)[1] ## number of obs ts
+	TT <- dim(Ey$ytT)[2] ## number of time steps
+	H_inv <- varimax(ZZ)$rotmat ## get the inverse of the rotation matrix
+	if(!is.null(dd)) {## check for covars
+	  DD <- coef(MLEobj, type="matrix")$D ## model expectation
+	  fits$ex <- ZZ %*% H_inv %*% MLEobj$states + DD %*% dd
+	} else { ## model expectation
+	  fits$ex <- ZZ %*% H_inv %*% MLEobj$states
+	}
+	VtT <- MARSSkfss(MLEobj)$VtT ## Var in model fits
+	VV <- NULL
+	for(tt in 1:TT) {
+	  RZVZ <- coef(MLEobj, type="matrix")$R - ZZ%*%VtT[,,tt]%*%t(ZZ)
+	  SS <- Ey$yxtT[,,tt] - Ey$ytT[,tt,drop=FALSE] %*% t(MLEobj$states[,tt,drop=FALSE])
+	  VV <- cbind(VV,diag(RZVZ + SS%*%t(ZZ) + ZZ%*%t(SS)))
+	  }
+ 	SE <- sqrt(VV)
+ 	fits$up <- qnorm(1-alpha/2)*SE + fits$ex ## upper & lower (1-alpha)% CI
+ 	fits$lo <- qnorm(alpha/2)*SE + fits$ex
+ 	return(fits)
+}
+```
+
+
+```{r Inverse}
+#MC 2015
+Z.est45 = coef( four.dfa.MC2015, type="matrix")$Z
+H.inv45 = varimax(Z.est45)$rotmat 
+Z.rot45 = Z.est45 %*% H.inv45
+trends.rot45 = solve(H.inv45) %*%  four.dfa.MC2015$states
+
+Z.est46 = coef( four.dfa.MC2016, type="matrix")$Z
+H.inv46 = varimax(Z.est46)$rotmat 
+Z.rot46 = Z.est46 %*% H.inv46
+trends.rot46 = solve(H.inv46) %*%  four.dfa.MC2016$states
+
+Z.est47 = coef( four.dfa.MC2017, type="matrix")$Z
+H.inv47 = varimax(Z.est47)$rotmat 
+Z.rot47 = Z.est47 %*% H.inv47
+trends.rot47 = solve(H.inv47) %*%  four.dfa.MC2017$states
+
+Z.est48 = coef( four.dfa.MC2018, type="matrix")$Z
+H.inv48 = varimax(Z.est48)$rotmat 
+Z.rot48 = Z.est48 %*% H.inv48
+trends.rot48 = solve(H.inv48) %*%  four.dfa.MC2018$states
+
+Z.ests45 = coef( four.dfa.SI2015, type="matrix")$Z
+H.invs45 = varimax(Z.ests45)$rotmat 
+Z.rots45 = Z.ests45 %*% H.invs45
+trends.rots45 = solve(H.invs45) %*%  four.dfa.SI2015$states
+
+Z.ests46 = coef( four.dfa.SI2016, type="matrix")$Z
+H.invs46 = varimax(Z.ests46)$rotmat 
+Z.rots46 = Z.ests46 %*% H.invs46
+trends.rots46 = solve(H.invs46) %*%  four.dfa.SI2016$states
+
+Z.ests48 = coef( four.dfa.SI2018, type="matrix")$Z
+H.invs48 = varimax(Z.ests48)$rotmat 
+Z.rots48 = Z.ests48 %*% H.invs48
+trends.rots48 = solve(H.invs48) %*%  four.dfa.SI2018$states
+
+#Save the Z matrixes, combine them: For four trends
+Z.rot45x<-as.data.frame(Z.rot45) %>% mutate(Type= spp, Year= c("MC2015"))
+Z.rot46x<-as.data.frame(Z.rot46) %>% mutate(Type= spp, Year= c("MC2016"))
+Z.rot47x<-as.data.frame(Z.rot47) %>% mutate(Type= spp, Year= c("MC2017"))
+Z.rot48x<-as.data.frame(Z.rot48) %>% mutate(Type= spp, Year= c("MC2018"))
+Z.rot45sx<-as.data.frame(Z.rots45) %>% mutate(Type= spp, Year= c("SI2015"))
+Z.rot46sx<-as.data.frame(Z.rots46) %>% mutate(Type= spp, Year= c("SI2016"))
+Z.rot48sx<-as.data.frame(Z.rots48) %>% mutate(Type= spp, Year= c("SI2018"))
+Z.rot4<- rbind(Z.rot45x, Z.rot46x, Z.rot47x, Z.rot48x, Z.rot45sx, Z.rot46sx, Z.rot48sx)
+#write.csv(Z.rot4, file="Z.rot4.csv")
+```
+
+```{r Loadings}
+#Trend 1
+ggplot(data= Z.rot4 ) +
+  geom_linerange(mapping=aes(x=Type, ymin=0, ymax= V1, color=Year), stat= "identity", size= 1.25, position = position_dodge(width=1))+
+  scale_x_discrete(labels=c("BGAugL" = "Blue-Green Algae", "CHLugL" = "Chlorophyll",
+                              "FDOMqsu" = "Dissolved \n Organic Matter", "NO3_mgL"= "Nitrate", "Turb"= "Turbidity"))+
+  labs(x= "Water Quality Constituent")+
+  theme(panel.grid.major.x = element_blank()) +
+  geom_hline(yintercept=0,color= "black") +
+  geom_vline(xintercept=c(1.5, 2.5, 3.5, 4.5), color= "white", size=1.5)+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  ggtitle("Loadings for Trend One")
+
+#Trend 2
+ggplot(data= Z.rot4 ) +
+  geom_linerange(mapping=aes(x=Type, ymin=0, ymax= V2, color=Year), stat= "identity", size= 1.25, position = position_dodge(width=1))+
+  scale_x_discrete(labels=c("BGAugL" = "Blue-Green Algae", "CHLugL" = "Chlorophyll",
+                              "FDOMqsu" = "Dissolved \n Organic Matter", "NO3_mgL"= "Nitrate", "Turb"= "Turbidity"))+
+  labs(x= "Water Quality Constituent")+
+  theme(panel.grid.major.x = element_blank()) +
+  geom_hline(yintercept=0,color= "black") +
+  geom_vline(xintercept=c(1.5, 2.5, 3.5, 4.5), color= "white", size=1.5)+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  ggtitle("Loadings for Trend Two")
+
+#Trend 3
+ggplot(data= Z.rot4 ) +
+  geom_linerange(mapping=aes(x=Type, ymin=0, ymax= V3, color=Year), stat= "identity", size= 1.25, position = position_dodge(width=1))+
+  scale_x_discrete(labels=c("BGAugL" = "Blue-Green Algae", "CHLugL" = "Chlorophyll",
+                              "FDOMqsu" = "Dissolved \n Organic Matter", "NO3_mgL"= "Nitrate", "Turb"= "Turbidity"))+
+  labs(x= "Water Quality Constituent")+
+  theme(panel.grid.major.x = element_blank()) +
+  geom_hline(yintercept=0,color= "black") +
+  geom_vline(xintercept=c(1.5, 2.5, 3.5, 4.5), color= "white", size=1.5)+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  #facet_wrap(~Year)+
+  ggtitle("Loadings for Trend Three")
+
+#Trend Four
+ggplot(data= Z.rot4 ) +
+  geom_linerange(mapping=aes(x=Type, ymin=0, ymax= V4, color=Year), stat= "identity", size= 1.25, position = position_dodge(width=1))+
+  scale_x_discrete(labels=c("BGAugL" = "Blue-Green Algae", "CHLugL" = "Chlorophyll",
+                              "FDOMqsu" = "Dissolved \n Organic Matter", "NO3_mgL"= "Nitrate", "Turb"= "Turbidity"))+
+  labs(x= "Water Quality Constituent")+
+  theme(panel.grid.major.x = element_blank()) +
+  geom_hline(yintercept=0,color= "black") +
+  geom_vline(xintercept=c(1.5, 2.5, 3.5, 4.5), color= "white", size=1.5)+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  #facet_wrap(~Year)+
+  ggtitle("Loadings for Trend Four")
+```
+
+```{r Trends}
+ylbl<- rownames(MC.2015)
+w_ts <- seq(dim(MC.2015)[2])
+N_ts <- dim(MC.2015)[1]
+clr <- c("brown","blue","darkgreen","darkred","purple")
+
+
+#Four trends
+trends.rot4<- rbind(as.data.frame(t(trends.rot45)) %>% mutate( num= c(85:171)) %>% mutate(Type= c("MC2015")), 
+                   as.data.frame(t(trends.rot46)) %>% mutate( num= c(1:204)) %>% mutate(Type= c("MC2016")),
+                   as.data.frame(t(trends.rot47)) %>% mutate( num= c(58:177)) %>% mutate(Type= c("MC2017")),
+                   as.data.frame(t(trends.rot48)) %>% mutate( num= c(50:171)) %>% mutate(Type= c("MC2018")))
+trends.rots4<- rbind(as.data.frame(t(trends.rots45)) %>% mutate( num= c(50:186)) %>% mutate(Type= c("SI2015")), 
+                   as.data.frame(t(trends.rots46)) %>% mutate( num= c(1:185)) %>% mutate(Type= c("SI2016")),
+                   as.data.frame(t(trends.rots48)) %>% mutate( num= c(40:178)) %>% mutate(Type= c("SI2018")))
+#write.csv(trends.rot4, file="MCtrends.rot4.csv")
+#write.csv(trends.rots4, file="SItrends.rot4.csv")
+
+#Main Channel Trend 1
+ggplot(data= trends.rot4) +
+  geom_line(mapping= aes(x=num, y= V1, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-6, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018")) +
+  ggtitle("Trend One in Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Main Channel Trend 2
+ggplot(data= trends.rot4) +
+  geom_line(mapping= aes(x=num, y= V2, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-6, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018")) +
+  ggtitle("Trend Two in Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Main Channel Trend 3
+ggplot(data= trends.rot4) +
+  geom_line(mapping= aes(x=num, y= V3, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-11, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018")) +
+  ggtitle("Trend Three in Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Main Channel Trend 4
+ggplot(data= trends.rot4) +
+  geom_line(mapping= aes(x=num, y= V4, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-11, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018")) +
+  ggtitle("Trend Three in Main Channel")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Backwater Trend 1
+ggplot(data= trends.rots4) +
+  geom_line(mapping= aes(x=num, y= V1, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-6, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Backwater 2015", "Backwater 2016",  "Backwater 2018")) +
+  ggtitle("Trend One in Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Backwater Trend 2
+ggplot(data= trends.rots4) +
+  geom_line(mapping= aes(x=num, y= V2, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-6, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Backwater 2015", "Backwater 2016",  "Backwater 2018")) +
+  ggtitle("Trend Two in Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Backwater trend 3
+ggplot(data= trends.rots4) +
+  geom_line(mapping= aes(x=num, y= V3, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-7, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  ggtitle("Trend Three in Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+#Backwater trend 4
+ggplot(data= trends.rots4) +
+  geom_line(mapping= aes(x=num, y= V4, color= Type), size=1) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-7, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  labs(x= "Month", y= "Trend")+
+  scale_color_manual(values= c("#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  ggtitle("Trend Three in Backwater")+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+?scale_x
+```
+
+```{r 2017 Trends}
+
+```
+
+
+```{r Trend and Discharge}
+#Graphing discharge against each trend line, does show similarity
+ggplot((data=trends.rot4 %>% filter(Type=='MC2015')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  geom_line(data=(MC.2015.rawc %>% mutate(num=85:171)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  labs(x="Time", y= "Trendline", title= "Main Channel 2015")+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rot45[1,], MC.2015.rawc$Discharge)
+cor(trends.rot45[2,], MC.2015.rawc$Discharge)
+cor(trends.rot45[3,], MC.2015.rawc$Discharge)
+cor(trends.rot45[4,], MC.2015.rawc$Discharge)
+
+
+ggplot((data=trends.rot4 %>% filter(Type=='MC2016')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Main Channel 2016")+
+  geom_line(data=(MC.2016.raw %>% mutate(num=1:204)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rot46[1,], MC.2016.raw$Discharge)
+cor(trends.rot46[2,], MC.2016.raw$Discharge)
+cor(trends.rot46[3,], MC.2016.raw$Discharge)
+cor(trends.rot46[4,], MC.2016.raw$Discharge)
+
+ggplot((data=trends.rot4 %>% filter(Type=='MC2017')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Main Channel 2017")+
+  geom_line(data=(MC.2017.raw %>% mutate(num=58:177)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+
+cor(trends.rot47[1,], MC.2017.raw$Discharge)
+cor(trends.rot47[2,], MC.2017.raw$Discharge)
+cor(trends.rot47[3,], MC.2017.raw$Discharge)
+cor(trends.rot47[4,], MC.2017.raw$Discharge)
+
+ggplot((data=trends.rot4 %>% filter(Type=='MC2018')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Main Channel 2018")+
+  geom_line(data=(MC.2018.raw %>% mutate(num=50:171)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rot48[1,], MC.2018.raw$Discharge)
+cor(trends.rot48[2,], MC.2018.raw$Discharge)
+cor(trends.rot48[3,], MC.2018.raw$Discharge)
+cor(trends.rot48[4,], MC.2018.raw$Discharge)
+
+ggplot((data=trends.rots4 %>% filter(Type=='SI2015')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Backwater 2015")+
+  geom_line(data=(SI.2015.rawc %>% mutate(num=50:186)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rots45[1,], SI.2015.rawc$Discharge)
+cor(trends.rots45[2,], SI.2015.rawc$Discharge)
+cor(trends.rots45[3,], SI.2015.rawc$Discharge)
+cor(trends.rots45[4,], SI.2015.rawc$Discharge)
+
+ggplot((data=trends.rots4 %>% filter(Type=='SI2016')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Backwater 2016")+
+  geom_line(data=(SI.2016.raw %>% mutate(num=1:185)), mapping=aes(x=num, y=(Discharge/5000)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rots46[1,], SI.2016.raw$Discharge)
+cor(trends.rots46[2,], SI.2016.raw$Discharge)
+cor(trends.rots46[3,], SI.2016.raw$Discharge)
+cor(trends.rots46[4,], SI.2016.raw$Discharge)
+
+ggplot((data=trends.rots4 %>% filter(Type=='SI2018')))+ 
+  geom_line(mapping=aes(x=num, y=V1, color="#D55E00"))+
+  geom_line(mapping=aes(x=num, y=V2, color="#0072B2"))+
+  geom_line(mapping=aes(x=num, y=V3, color="#F0E442"))+
+  geom_line(mapping=aes(x=num, y=V4, color="#009E73"))+
+  labs(x="Time", y= "Trendline", title= "Backwater 2018")+
+  geom_line(data=(SI.2018.rawc %>% mutate(num=40:178)), mapping=aes(x=num, y=(Discharge/7500)-4, color="black"), size=2.5)+
+  guides(color = guide_legend(reverse=F,title="Line"))+
+  scale_colour_identity(breaks=c("#D55E00", "#0072B2", "#F0E442", "#009E73", "black"), labels= c("Trend 1", "Trend 2", "Trend 3", "Trend 4", "Discharge"), guide="legend")
+
+cor(trends.rots48[1,], SI.2018.rawc$Discharge)
+cor(trends.rots48[2,], SI.2018.rawc$Discharge)
+cor(trends.rots48[3,], SI.2018.rawc$Discharge)
+cor(trends.rots48[4,], SI.2018.rawc$Discharge)
+
+#"#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"
+
+```
+
+```{r Trend Loadings By Year, Asc and cor}
+#Visualize the loadings for trend 1 for each location/yr for each variable
+Z.rot4<-Z.rot4 %>% mutate(Sum1= (V1+V2+V3+V4))
+Z.rot4<-Z.rot4 %>% select(!Sum) %>% rename(SUM=Sum1)
+
+#SUM of the loadings for each yr/location
+ggplot(data= Z.rot4 ) +
+  geom_linerange(mapping=aes(x=Type, ymin=0, ymax= SUM, color=Year),  size= 1.25, position = position_dodge(width=1))+
+  scale_x_discrete(labels=c("BGAugL" = "Blue-Green Algae", "CHLugL" = "Chlorophyll",
+                              "FDOMqsu" = "Dissolved \n Organic Matter", "NO3_mgL"= "Nitrate", "Turb"= "Turbidity"))+
+  labs(x= "Water Quality Constituent", y="Sum of Loadings for all Trendlines")+
+  theme(panel.grid.major.x = element_blank()) +
+  geom_hline(yintercept=0,color= "black") +
+  geom_vline(xintercept=c(1.5, 2.5, 3.5, 4.5), color= "white", size=1.5)+
+  scale_color_manual(values= c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"), name= "Data", labels=c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")) +
+  
+  
+#Loops t find the differences and associations, stored in loadings.dif4
+Variables= c("Turb", "CHL-a", "BGA", "FDOM", "NO3")
+Trends= c(1, 2, 3, 4)
+Loadings.dif4 = data.frame() #list to save model objects 
+#MC2015
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot45x[i,k]<0 & Z.rot45x[j,k]>0) | (Z.rot45x[i,k]>0 & Z.rot45x[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot45x[i,k]-Z.rot45x[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "MC2015",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+#MC2016
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot46x[i,k]<0 & Z.rot46x[j,k]>0) | (Z.rot46x[i,k]>0 & Z.rot46x[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot46x[i,k]-Z.rot46x[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "MC2016",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+#MC2017
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot47x[i,k]<0 & Z.rot47x[j,k]>0) | (Z.rot47x[i,k]>0 & Z.rot47x[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot47x[i,k]-Z.rot47x[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "MC2017",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+#MC 2018
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot48x[i,k]<0 & Z.rot48x[j,k]>0) | (Z.rot48x[i,k]>0 & Z.rot48x[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot48x[i,k]-Z.rot48x[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "MC2018",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+
+#SI 2015
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot45sx[i,k]<0 & Z.rot45sx[j,k]>0) | (Z.rot45sx[i,k]>0 & Z.rot45sx[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot45sx[i,k]-Z.rot45sx[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "SI2015",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot46sx[i,k]<0 & Z.rot46sx[j,k]>0) | (Z.rot46sx[i,k]>0 & Z.rot46sx[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot46sx[i,k]-Z.rot46sx[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "SI2016",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+for(k in 1:4){ #loop over 1-4 trends
+  for(i in 1:4) { #loop over the first item in the pair
+    for(j in (i+1):5) {
+      if((Z.rot48sx[i,k]<0 & Z.rot48sx[j,k]>0) | (Z.rot48sx[i,k]>0 & Z.rot48sx[j,k]<0)){
+        asc= "Neg"
+      }
+      else{
+        asc="Pos"
+      }
+      Loadings.dif4 = rbind(Loadings.dif4, 
+                                     data.frame(x=abs(Z.rot48sx[i,k]-Z.rot48sx[j,k]), 
+                                                Type= paste(Variables[i],Variables[j], sep="-"), 
+                                                Trend= paste("V", k, sep=""),
+                                                Year= "SI2018",
+                                                Asc= asc))
+      } #end i loop
+    } # end i loop 
+  }#end k loop
+
+
+ggplot(data= Loadings.dif4) +
+  geom_boxplot(mapping=aes(x=reorder(Type, x, median), y=x))+
+  scale_x_discrete(labels=c("BGA \n FDOM", "BGA \n NO3", "CHL-a \n BGA", "CHL-a \n FDOM", "CHL-a \n NO3", "FDOM \n NO3", "Turb \n BGA", "Turb \n CHL", "Turb \n FDOM", "Turb \n NO3")) + labs(x= "Pairings", y="Absolute Value of the Difference Between Loadings", title= "Average Difference Between Loadings for Water Quality Variable Pairs")
+  
+  
+ggplot(data= Loadings.dif4)+
+  geom_bar(mapping=aes(x=reorder(Type, x, median), fill= Asc), position="stack") +
+  scale_x_discrete(labels=c("BGA \n FDOM", "BGA \n NO3", "CHL-a \n BGA", "CHL-a \n FDOM", "CHL-a \n NO3", "FDOM \n NO3", "Turb \n BGA", "Turb \n CHL", "Turb \n FDOM", "Turb \n NO3")) +
+   scale_fill_manual(values= c("#D55E00", "#009E73"), name= "Correlation", labels= c("Negative", "Postitive")) +
+  labs(x="Pairs of Constituents", y="Count")+
+  #facet_wrap(~Trend)
+  ggtitle("Loadings Associations")
+
+
+#Savingand combining all of the pairs info to graph
+pairs<- Loadings.dif4[1:10,2] #Saving pair names
+Correlations= data.frame()
+
+Loadings.dif4[Loadings.dif4$Type=='Turb-CHL-a',]
+Loadings.dif4[Loadings.dif4$Type=='Turb-CHL-a',][,5]=='Pos'
+sum(Loadings.dif4[Loadings.dif4$Type=='Turb-CHL-a',][,5]=='Pos')
+
+for(i in 1:10){
+  Correlations[i,1] = pairs[i]
+  Correlations[i, 2] = median(Loadings.dif4[Loadings.dif4$Type==pairs[i],][,1])
+  Correlations[i, 3] =sum(Loadings.dif4[Loadings.dif4$Type==pairs[i],][,5]=='Pos')
+}
+
+colnames(Correlations)<-c("Pair", "Median", "PosCount")
+
+
+#Looking at correlations of loadings
+ggplot(data=Correlations) +
+  geom_point(mapping=aes(x=Median, y=PosCount), color= "#0072B2", size=2)+
+  geom_text(aes(Median, PosCount, label=c("Turb \n CHL-a", "Turb \n BGA", "FDOM \n Turb", "NO3 \n Turb", "CHL-a \n BGA", "FDOM \n CHL-a", "NO3 \n CHL-a", "BGA \n FDOM", "NO3 \n BGA", "NO3 \n FDOM")), nudge_x= c(.015,.008, -.015, .015, .015, .015, .015, -.015, -.015, .015), size=3.5)+ 
+  labs(title= "Correlations between Loadings for Pairs of Constituents", x= "Median Difference between Loadings", y= "Count of Loadings in the Same Direction for each Pair \n (Out of 28)")+
+  annotate(geom= "label", x=c(.08, .4, .35), y=c(23.25,12.5, 20), label=c("Strong \n Correlation", "Weak \n Correlation", "FDOM: Fluorescent Dissolved \n Organic Matter \n BGA: Blue-Green Algae \n CHL-a: Chlorophyll-a \n NO3: Nitrate \n Turb: Turbidity"), color= c("#D55E00", "#D55E00", "black"))
+
+write.csv(Loadings.dif4, "Loadingsdif4.csv", row.names = FALSE)
+#"#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"
+```
+
+
+```{r R^2 4 trends}
+#MC 2015
+mod5= four.dfa.MC2015
+mod_fit5 <- get_DFA_fits(mod5, alpha= .05)
+trends.rot5t<- t(trends.rot5)
+
+#Transposing not necessary
+#R251t = rsquare(trends.rot5t[,1], data = MC.2015r[,1])
+#df51t<- data.frame(trends.rot5t[,1], MC.2015[,1])
+
+#R sq function
+rsq <- function (x, y) cor(x, y) ^ 2
+
+mod5= four.dfa.MC2015
+mod_fit5 <- get_DFA_fits(mod5, alpha= .05)
+mod6= four.dfa.MC2016
+mod_fit6 <- get_DFA_fits(mod6, alpha= .05)
+mod7= four.dfa.MC2017
+mod_fit7 <- get_DFA_fits(mod7, alpha= .05)
+mod8= four.dfa.MC2018
+mod_fit8 <- get_DFA_fits(mod8, alpha= .05)
+
+mods5= four.dfa.SI2015
+mod_fits5 <- get_DFA_fits(mods5, alpha= .05)
+mods6= four.dfa.SI2016
+mod_fits6 <- get_DFA_fits(mods6, alpha= .05)
+mods8= four.dfa.SI2018
+mod_fits8 <- get_DFA_fits(mods8, alpha= .05)
+
+#rqs(s)# : r^2 for each variable and trend line
+#rsq#(s)f: r^2 for each fit and variable
+
+#MC 2015
+rsq5<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq5[i,j]<- rsq(trends.rot45[j,],MC.2015.ct[i,])
+  }
+}
+rownames(rsq5)<- spp
+
+rsq5f<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq5f[i,j]<- rsq(mod_fit5$ex[j,],MC.2015.ct[i,])
+  }
+}
+rownames(rsq5f)<- spp
+colnames(rsq5f)<- paste(spp, "ex", sep="")
+
+
+#MC 2016
+rsq6<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq6[i,j]<- rsq(trends.rot46[j,],MC.2016[i,])
+  }
+}
+rownames(rsq6)<- spp
+
+rsq6f<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq6f[i,j]<- rsq(mod_fit6$ex[j,],MC.2016[i,])
+  }
+}
+rownames(rsq6f)<- spp
+colnames(rsq6f)<- paste(spp, "ex", sep="")
+
+#MC 2017
+rsq7<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq7[i,j]<- rsq(trends.rot47[j,],MC.2017[i,])
+  }
+}
+rownames(rsq7)<- spp
+
+rsq7f<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq7f[i,j]<- rsq(mod_fit7$ex[j,],MC.2017[i,])
+  }
+}
+rownames(rsq7f)<- spp
+colnames(rsq7f)<- paste(spp, "ex", sep="")
+
+#MC 2018
+rsq8<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq8[i,j]<- rsq(trends.rot48[j,],MC.2018[i,])
+  }
+}
+rownames(rsq8)<- spp
+
+rsq8f<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq8f[i,j]<- rsq(mod_fit8$ex[j,],MC.2018[i,])
+  }
+}
+rownames(rsq8f)<- spp
+colnames(rsq8f)<- paste(spp, "ex", sep="")
+
+
+#SI 2015
+rsq5s<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq5s[i,j]<- rsq(trends.rots45[j,],SI.2015.ct[i,])
+  }
+}
+rownames(rsq5s)<- spp
+
+rsq5sf<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq5sf[i,j]<- rsq(mod_fits5$ex[j,],SI.2015.ct[i,])
+  }
+}
+rownames(rsq5sf)<- spp
+colnames(rsq5sf)<- paste(spp, "ex", sep="")
+
+#SI 2016
+rsq6s<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq6s[i,j]<- rsq(trends.rots46[j,],SI.2016[i,])
+  }
+}
+rownames(rsq6s)<- spp
+
+rsq6sf<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq6sf[i,j]<- rsq(mod_fits6$ex[j,],SI.2016[i,])
+  }
+}
+rownames(rsq6sf)<- spp
+colnames(rsq6sf)<- paste(spp, "ex", sep="")
+
+
+#SI 2018
+rsq8s<- data.frame(c())
+for(i in 1:5){
+  for (j in 1:4){
+    rsq8s[i,j]<- rsq(trends.rots48[j,],SI.2018.ct[i,])
+  }
+}
+rownames(rsq8s)<- spp
+
+rsq8sf<- data.frame(c())
+for(i in 1:5){
+  for(j in 1:5){
+    rsq8sf[i,j]<- rsq(mod_fits8$ex[j,],SI.2018.ct[i,])
+  }
+}
+rownames(rsq8sf)<- spp
+colnames(rsq8sf)<- paste(spp, "ex", sep="")
+
+#rqs(s)# : r^2 for each variable and trend line
+#rsq#(s)f: r^2 for each fit and variable
+
+Rsquared<- rbind(as.data.frame(t(rsq5))  %>% mutate(Type= c("MC2015")), 
+                   as.data.frame(t(rsq6))  %>% mutate(Type= c("MC2016")),
+                   as.data.frame(t(rsq7))  %>% mutate(Type= c("MC2017")),
+                   as.data.frame(t(rsq8))  %>% mutate(Type= c("MC2018")),
+                   as.data.frame(t(rsq5s))  %>% mutate(Type= c("SI2015")), 
+                   as.data.frame(t(rsq6s))  %>% mutate(Type= c("SI2016")),
+                   as.data.frame(t(rsq8s))  %>% mutate(Type= c("SI2018")))
+Rsquared<- Rsquared%>% mutate(Trend= c('V1'))
+Rsquared[,'Trend']<- c('V1', 'V2', 'V3', 'V4')
+
+#How well does each trend line predict variable
+ggplot(data=Rsquared) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=Turb, fill=Trend), position='dodge')
+ggplot(data=Rsquared) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=CHLugL, fill=Trend), position='dodge')
+ggplot(data=Rsquared) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=BGAugL, fill=Trend), position='dodge')
+ggplot(data=Rsquared) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=FDOMqsu, fill=Trend), position='dodge')
+ggplot(data=Rsquared) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=NO3_mgL, fill=Trend), position='dodge')
+
+Rsquaredf<- rbind(as.data.frame(t(rsq5f))  %>% mutate(Type= c("MC2015")), 
+                   as.data.frame(t(rsq6f))  %>% mutate(Type= c("MC2016")),
+                   as.data.frame(t(rsq7f))  %>% mutate(Type= c("MC2017")),
+                   as.data.frame(t(rsq8f))  %>% mutate(Type= c("MC2018")),
+                   as.data.frame(t(rsq5sf))  %>% mutate(Type= c("SI2015")), 
+                   as.data.frame(t(rsq6sf))  %>% mutate(Type= c("SI2016")),
+                   as.data.frame(t(rsq8sf))  %>% mutate(Type= c("SI2018")))
+Rsquaredf<-Rsquaredf %>% mutate (Ex= NA)
+Rsquaredf[,'Ex']<- paste(spp,"ex", sep="")
+
+#How well does each fit predict each variable
+ggplot(data=Rsquaredf) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=Turb, fill=Ex), position='dodge')
+ggplot(data=Rsquaredf) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=BGAugL, fill=Ex), position='dodge')
+ggplot(data=Rsquaredf) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=CHLugL, fill=Ex), position='dodge')
+ggplot(data=Rsquaredf) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=FDOMqsu, fill=Ex), position='dodge')
+ggplot(data=Rsquaredf) + geom_bar(stat= 'identity', mapping=aes(x=Type, y=NO3_mgL, fill=Ex), position='dodge')
+
+
+#FInding the overall r^2 for all of the variables and predictions
+rsq2015obs<- c(MC.2015c[1,], MC.2015c[2,], MC.2015c[3,], MC.2015c[4,], MC.2015c[5,])
+rsq2015exp<- c(mod_fit5$ex[1,], mod_fit5$ex[2,], mod_fit5$ex[3,], mod_fit5$ex[4,], mod_fit5$ex[5,])
+rsq2015<- rsq(rsq2015obs,rsq2015exp)
+#rsq2015
+
+rsq2016obs<- c(MC.2016[1,], MC.2016[2,], MC.2016[3,], MC.2016[4,], MC.2016[5,])
+rsq2016exp<- c(mod_fit6$ex[1,], mod_fit6$ex[2,], mod_fit6$ex[3,], mod_fit6$ex[4,], mod_fit6$ex[5,])
+rsq2016<- rsq(rsq2016obs,rsq2016exp)
+#rsq2016
+
+rsq2017obs<- c(MC.2017[1,], MC.2017[2,], MC.2017[3,], MC.2017[4,], MC.2017[5,])
+rsq2017exp<- c(mod_fit7$ex[1,], mod_fit7$ex[2,], mod_fit7$ex[3,], mod_fit7$ex[4,], mod_fit7$ex[5,])
+rsq2017<- rsq(rsq2017obs,rsq2017exp)
+#rsq2017
+
+rsq2018obs<- c(MC.2018[1,], MC.2018[2,], MC.2018[3,], MC.2018[4,], MC.2018[5,])
+rsq2018exp<- c(mod_fit8$ex[1,], mod_fit8$ex[2,], mod_fit8$ex[3,], mod_fit8$ex[4,], mod_fit8$ex[5,])
+rsq2018<- rsq(rsq2018obs,rsq2018exp)
+#rsq2018
+
+rsq2018Sobs<- c(SI.2018c[1,], SI.2018c[2,], SI.2018c[3,], SI.2018c[4,], SI.2018c[5,])
+rsq2018Sexp<- c(mod_fits8$ex[1,], mod_fits8$ex[2,], mod_fits8$ex[3,], mod_fits8$ex[4,], mod_fits8$ex[5,])
+rsq2018S<- rsq(rsq2018Sobs,rsq2018Sexp)
+#rsq2018S
+
+rsq2016Sobs<- c(SI.2016[1,], SI.2016[2,], SI.2016[3,], SI.2016[4,], SI.2016[5,])
+rsq2016Sexp<- c(mod_fits6$ex[1,], mod_fits6$ex[2,], mod_fits6$ex[3,], mod_fits6$ex[4,], mod_fits6$ex[5,])
+rsq2016S<- rsq(rsq2016Sobs,rsq2016Sexp)
+rsq2016S
+
+rsq2015Sobs<- c(SI.2015c[1,], SI.2015c[2,], SI.2015c[3,], SI.2015c[4,], SI.2015c[5,])
+rsq2015Sexp<- c(mod_fits5$ex[1,], mod_fits5$ex[2,], mod_fits5$ex[3,], mod_fits5$ex[4,], mod_fits5$ex[5,])
+rsq2015S<- rsq(rsq2015Sobs,rsq2015Sexp)
+#rsq2015S
+```
+
+```{r R^2 per year }
+#FInding the diagonals for rsq#(s)f
+#How well does turb fit predict turb, chl fit predict chl
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq5f[i,i])
+}
+rsqall2015<- data.frame('r^2'= c(pp, rsq2015), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq6f[i,i])
+}
+rsqall2016<- data.frame('r^2'= c(pp, rsq2016), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq7f[i,i])
+}
+rsqall2017<- data.frame('r^2'= c(pp, rsq2017), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq8f[i,i])
+}
+rsqall2018<- data.frame('r^2'= c(pp, rsq2018), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq5sf[i,i])
+}
+rsqall2015s<- data.frame('r^2'= c(pp, rsq2015S), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq6sf[i,i])
+}
+rsqall2016s<- data.frame('r^2'= c(pp, rsq2016S), 'Variable'= c(spp, 'Overall'))
+
+pp<-c()
+for(i in 1:5){
+  pp<-c(pp, rsq8sf[i,i])
+}
+rsqall2018s<- data.frame('r^2'= c(pp, rsq2018S), 'Variable'= c(spp, 'Overall'))
+
+#NOTE THESE ARE NOT IN ORDER: need to order them
+sqall<- rbind(rsqall2015  %>% mutate(Type= c("MC2015")), 
+                   rsqall2016  %>% mutate(Type= c("MC2016")),
+                   rsqall2017  %>% mutate(Type= c("MC2017")),
+                   rsqall2018  %>% mutate(Type= c("MC2018")),
+                   rsqall2015s  %>% mutate(Type= c("SI2015")), 
+                   rsqall2016s  %>% mutate(Type= c("SI2016")),
+                   rsqall2018s  %>% mutate(Type= c("SI2018")))
+YearsAreas<- c("Main Channel 2015", "Main Channel 2016", "Main Channel 2017", "Main Channel 2018", "Backwater 2015", "Backwater 2016", "Backwater 2018")
+names(YearsAreas)<- c("MC2015", "MC2016", "MC2017", "MC2018", "SI2015", "SI2016", "SI2018")
+ggplot(data=sqall) + geom_bar(stat= 'identity',mapping=aes(x=Variable, y=r.2)) + labs(title= "R squared Values for Dynamic Factor Analysis Predictions", x="Water Quality Variable", y= "r squared") +  facet_wrap(.~Type, labeller= labeller( Type=YearsAreas), ncol=4) #scale_x_discrete(labels= c("Turb", "Chl-a", "BGA", "FDOM", "N03", "Overall"))  +
+
+#Mean of all of the r^2
+mean(c(rsq2015, rsq2016, rsq2017, rsq2018, rsq2015S, rsq2016S, rsq2018S))
+
+```
+
+```{r Fit}
+
+#2016 MC fit for each variable-for Z-scored
+ylbl<- c("Turbidity \n (NTU)", "Cholorphyll-a \n (ugL)", "Blue-green \n algae (ugL)", "Dissolved \n Organic \n Matter (qsu)", "Nitrate \n (mgL)")
+
+#2018 Main Channel
+## get model fits & CI's
+mod_fit4 <- get_DFA_fits(mod6, alpha= .05)
+
+
+## plot the fits
+mod_fit2016<-as.data.frame(t(mod_fit6$ex))
+colnames(mod_fit2016)<- c(spp)
+mod_fit2016<- mod_fit2016 %>% mutate(Time= c(1:204))
+M2016df<- as.data.frame(t(MC.2016))
+M2016df<- M2016df %>% mutate(Time= c(1:204))
+
+NO3m6<-ggplot(data= mod_fit2016) + 
+  geom_line(mapping= aes(x= Time, y= NO3_mgL, color='black'), size=1.25)+
+  labs(x="Month", y= "Nitrate \n (Z-scored)", title= "DFA Model Prediction of Nitrate in the Main Channel, 2016") +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-3, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_line(data=M2016df, mapping=aes(x=Time, y=NO3_mgL, color='#999999'),size=1)+
+  geom_point(data=M2016df, mapping=aes(x=Time, y=NO3_mgL, color="#0072B2"),size=1.5, shape=16 )+
+  theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())+
+  guides(color = guide_legend(reverse=F, title= " "))+
+  scale_colour_identity(breaks=c('black', "#0072B2"), labels= c("Model", "Data"), guide="legend")
+
+turbm6<-ggplot(data= mod_fit2016) + 
+  geom_line(mapping= aes(x= Time, y= Turb), size=1.25)+
+  labs(x="Month", y= "Turbidity \n (Z-scored)", title= "DFA Model Prediction in the Main Channel, 2016") +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-4, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_line(data=M2016df, mapping=aes(x=Time, y=Turb), color='#999999',size=1.5)+
+  geom_point(data=M2016df, mapping=aes(x=Time, y=Turb), color="#009E73",size=1.25, shape=16 )+
+  theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+CHLm6<-ggplot(data= mod_fit2016) + 
+  geom_line(mapping= aes(x= Time, y= CHLugL), size=1.25)+
+  labs(x="Month", y= "Chlorophyll-a \n (Z-scored)", title= "DFA Model Prediction of Chlorophyll-a in the Main Channel, 2016") +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-3, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_line(data=M2016df, mapping=aes(x=Time, y=CHLugL), color='#999999',size=1)+
+  geom_point(data=M2016df, mapping=aes(x=Time, y=CHLugL), color="#0072B2",size=1.5, shape=16 )+
+  theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+BGAm6<-ggplot(data= mod_fit2016) + 
+  geom_line(mapping= aes(x= Time, y= BGAugL), size=1.25)+
+  labs(x="Month", y= "Blue-Green Algae \n(Z-scored)", title= "DFA Model Prediction of Blue-Green Algae in the Main Channel, 2016") +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-2.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_line(data=M2016df, mapping=aes(x=Time, y=BGAugL), color='#999999',size=1)+
+  geom_point(data=M2016df, mapping=aes(x=Time, y=BGAugL), color="#0072B2",size=1.5, shape=16 )+
+  theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+
+FDOMm6<-ggplot(data= mod_fit2016) + 
+  geom_line(mapping= aes(x= Time, y= FDOMqsu), size=1.25)+
+  labs(x="Month", y= "FDOM \n (Z-scored)", title= "DFA Model Prediction of Fluorescent Dissolved Organic Matter") +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171)+15), y=-3.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  geom_line(data=M2016df, mapping=aes(x=Time, y=FDOMqsu), color='#999999',size=1)+
+  geom_point(data=M2016df, mapping=aes(x=Time, y=FDOMqsu), color="#0072B2",size=1.5, shape=16 )+
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+  
+ turbm6
+ CHLm6
+ BGAm6
+ FDOMm6
+ NO3m6
+
+for(i in 1:5) {
+ # up <- mod_fit$up[i,]
+  mn <- mod_fit$ex[i,]
+  #lo <- mod_fit$lo[i,]
+  plot(w_ts,mn,xlab="Time",ylab=ylbl[i],xaxt="n",type="n", cex.lab=1.2,
+       ylim=c(min(lo),(max(up))))
+  points(w_ts,MC.2018[i,], pch=16, col=clr[i])
+  #lines(w_ts, up, col="darkgray")
+  lines(w_ts, mn, col="black", lwd=2)
+  #lines(w_ts, lo, col="darkgray")
+}
+
+AllDataMC6<-AllData %>% filter(Type=='MC2016')
+ggplot(data=AllDataMC6) + geom_line(mapping=aes(x=num, y=CHLugL), color= "#56B4E9", size=1) + 
+   geom_line(mapping=aes(x=num, y=BGAugL*10), color= "#E69F00", size=1) +
+  #facet_wrap(~Area)+ #, labeller= labeller( Type=YearsAreas)) +
+  geom_vline(xintercept=c(19, 50, 80, 111, 142, 171, 203) , col="darkgray")+
+  annotate(geom= "text", x= (c(-13,19, 50, 80, 111, 142, 171, 203)+15), y=-.5, label=c("April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov"), size=3.5) +
+  theme(panel.grid.major.x = element_blank()) +
+  theme(panel.grid.minor.x = element_blank())+
+  #labs(x= "Month", y= "Nitrate (mgL)")+
+ # scale_color_manual(values= c("#E69F00", "#56B4E9"), name= "Year", labels=c("2015", "2016", "2017", "2018")) +
+  scale_y_continuous(
+
+    name = "Chlorophyll-a (ugL)",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~./10, name="Blue-Green Algae (ugL)")
+  ) + 
+  
+  ggtitle("Chlorophyll-a and Blue-Green Algae Levels in 2016 in the Main Channel")+
+  theme(
+    axis.title.y = element_text(color = "#56B4E9", size=13),
+    axis.title.y.right = element_text(color = "#E69F00", size=13)
+  ) +
+   theme(axis.text.x= element_blank(), axis.ticks.x = element_blank())
+#"#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00"
+```
+
