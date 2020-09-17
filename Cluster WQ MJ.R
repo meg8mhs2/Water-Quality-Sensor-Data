@@ -7,7 +7,8 @@ library(fpc)
 library(cluster)
 library(gridExtra)
 set.seed(2002)
-#MC2018.csv, MC2018Day.csv, ClusteredDataMC, MCByDay, SIByDay, ClusteredDataMCNoDis.csv
+
+#Cleaned data sets: MC2018.csv, MC2018Day.csv, ClusteredDataMC, MCByDay, SIByDay, ClusteredDataMCNoDis.csv
 
 #Import the Data
 filename1 <- file.path("MC_WQ.csv")
@@ -364,7 +365,7 @@ Time_Discharge
 
 Time_Discharge_2 <- ggplot(data= Joint_Data_2, mapping= aes(x= yday(ymd(Date)), y=Discharge))+
   geom_point(mapping=aes(color= as.character(Cluster)))+ 
-  scale_color_discrete(name= "Cluster", labels= c("1: High Dissolved Organic Matter", "2: Low Blue-Green Algae", "3:Low Dissolved Organic Matter", "4: High Blue-Green Algae and Chlorophyll", "5: High Turbidity", "6: Low Nitrate", "7: Average")) +
+  scale_color_discrete(name= "Cluster", labels= c("1: High Dissolved Organic Matter", "2: Low Blue-Green Algae", "3:Low Dissolved Organic Matter", "4: High Blue-Green Algae and Chlorophyll", "5: High Turbidity", "6: High Nitrate", "7: Average")) +
   #scale_x_date("Day of the Year", date_breaks="months", date_labels = c("Oct", "April", "May", "June", "July", "Aug", "Sept"))+
   xlab("Day of the Year")+
   ggtitle("Main Channel Discharge") +

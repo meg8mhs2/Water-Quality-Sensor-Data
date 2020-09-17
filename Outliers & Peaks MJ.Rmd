@@ -42,6 +42,7 @@ Month is how the graph is organized. When it is set to false, it will show all t
 Measurement is the variable to analyze
 
 ```{r Graph Function}
+#For basic graphing purposes and visualizations
 Water_Quality_Graph<- function(Data_Set_MC= TRUE, ByDay= FALSE, Month= FALSE, Measurement){
   if(Data_Set_MC== TRUE){
     filename1 <- file.path("MC_WQ.csv")
@@ -85,8 +86,10 @@ Analysis is done through the use of the mean and standard deviation, as well as 
 
 Large peaks are identified as points 2-3  standard deviations above the mean for data that is by-day (ie the average of all times each day is taken and plotted)
 Small peaks are identified as points 2 standard deviations above the mean for specific years (generally initially visually observed)
+These were not identified for removal, rather for analysis. The by-day data was used
 
-Outliers are identified as singluar (or set of) point(s) which do not follow the general curve/ plot of the graph. These are identified using the full graphs (with all time data), so that points with collection errors can be identified and removed. There are low outliers which are significantly lower can nearby points, and high outliers, which are significantly higher
+Outliers are identified as singluar (or set of) point(s) which do not follow the general curve/ plot of the graph. These are identified using the full graphs (with all time data), so that points with collection errors can be identified and removed. There are low outliers which are significantly lower can nearby points, and high outliers, which are significantly higher.
+These were identified for removal, as occured on the Cleaning Data and Time Series document
 ```{r Turbidity Analysis}
 Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='Turb')
 Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='Turb')
@@ -97,6 +100,7 @@ Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='T
 ```{r MC Outliers}
 data_MC_day %>% filter(Turb > mean.default(Turb, na.rm= TRUE) + 3*sd(Turb, na.rm=TRUE)) %>% arrange(Turb)
 
+#Visually identified two here, check
 data_MC %>% filter(Turb>20, Month_MC>7, Year_MC==2017)
 
 data_MC %>% filter(Year_MC==2015) %>% arrange(Date_MC)
@@ -109,13 +113,13 @@ Aug 13-15 (2016)
 Sept 24-25 (2016)
 July 21-23 (2017)
 
-Single outliers (high):
+Single outliers (high)- these were not removed, due to the variation in the other years :
 Sept 25, 2017 (01:03)
 August 20, 2017 (03:10)
 
 Single outliers (low)
-June 30, 2015 (both times)
-Nov 2, 2016 (12:52, almost all of these data points seem to be outliers)
+June 30, 2015 (both times)- first day
+Nov 2, 2016 (12:52, almost all of these data points seem to be outliers)- Last day
 Oct 26, 2017 (there is no data dor the 3 days preceeding this point)
 ```{r SI Outliers}
 data_SI_day %>% filter(Turb > mean.default(Turb, na.rm= TRUE) + 3*sd(Turb, na.rm=TRUE)) %>% arrange(Turb)
@@ -154,7 +158,7 @@ data_SI_day %>% filter(year(Date_SI)== 2017, month(Date_SI)>7, !is.na(CHLugL)) %
 
 
 data_SI %>% filter(CHLugL <0.4) %>% arrange(desc(CHLugL))
-data_SI %>% filter(CHLugL <1, year(Date_SI)== 2018) %>% arrange(CHLugL)
+#data_SI %>% filter(CHLugL <1, year(Date_SI)== 2018) %>% arrange(CHLugL)
 ```
 
 Large Peaks on:
@@ -166,10 +170,7 @@ Sept 18, 2018
 
 Single (low) outliers seen on the all-data graph
 June 30-July 1, 2015 (all times)
-June 17, Aug 18, 2016 (15:16, 13:28)
-May 11, Sept 15 2017 (11:02, 10:23)
-May 10, July 29-Aug 1, 2018 (all times)
-{Note that many of these points occur at the very beginning/end of testing periods}
+
 
 ```{r SI Peaks}
 data_SI_day %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 3*sd(CHLugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
