@@ -1,0 +1,365 @@
+---
+title: "Outliers_WQ"
+author: "Megan J"
+date: "June 10, 2020"
+output: html_document
+---
+
+```{r Setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+set.seed(2002)
+```
+
+Import the data
+
+data_MC is the main channel data
+data_SI is the backwater channel data
+data_MC_day is the main channel grouped & averaged by day
+data_SI_day is the backwater channel grouped & averaged by day
+```{r}
+filename1 <- file.path("MC_WQ.csv")
+data_MC_raw <- read_csv(filename1)
+
+filename2 <- file.path("SI_WQ.csv")
+data_SI_raw <- read_csv(filename2)
+
+data_MC<- data_MC_raw %>% mutate(Date_MC= mdy(`YYYY-MM-DD`), Month_MC = month(mdy(`YYYY-MM-DD`)), Year_MC = year(mdy(`YYYY-MM-DD`))) %>% select(Date_MC, Month_MC, Year_MC, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL, `hh:mm`)
+data_SI<- data_SI_raw %>% mutate(Date_SI= mdy(`YYYY-MM-DD`), Month_SI = month(mdy(`YYYY-MM-DD`)), Year_SI = year(mdy(`YYYY-MM-DD`))) %>% select(Date_SI, Month_SI, Year_SI, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL, `hh:mm`)
+
+data_MC_day <- data_MC %>% 
+  group_by(Date_MC) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+
+data_SI_day <- data_SI %>% 
+  group_by(Date_SI) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+```
+
+Data_Set_MC is the data set used. If it is set to true, the main channel is analyzed. If it is set to false, the back channel is analyzed
+Month is how the graph is organized. When it is set to false, it will show all the data over all of the years. When it is set to true, it shows all of the data over a calendar year
+Measurement is the variable to analyze
+
+```{r Graph Function}
+#For basic graphing purposes and visualizations
+Water_Quality_Graph<- function(Data_Set_MC= TRUE, ByDay= FALSE, Month= FALSE, Measurement){
+  if(Data_Set_MC== TRUE){
+    filename1 <- file.path("MC_WQ.csv")
+  }
+  else{
+    filename1 <- file.path("SI_WQ.csv")
+  }
+  data_WQ_raw <- read_csv(filename1)
+  
+  dates <- mdy(data_WQ_raw$`YYYY-MM-DD`) %>% sort
+  
+  data_WQ<- data_WQ_raw %>% 
+      mutate(Month = month(dates), Date= dates) %>%
+      select(Date, Month, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL)
+  if(ByDay==TRUE){
+    data_WQ <- data_WQ %>% 
+      group_by(Date) %>%
+      summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+  }
+  if(Month==FALSE){
+    VarX= data_WQ$Date
+    Name = "Year"
+  }
+  else{
+    VarX=data_WQ$Month
+    Name = "Month"
+  }
+  plot<-ggplot(data= data_WQ, mapping=aes_string(VarX, Measurement)) +
+    geom_point() +
+    xlab(Name)
+  if(Data_Set_MC== TRUE){
+    plot + ggtitle("Water Quality Over Time in the Main Channel")
+  }
+  else{
+    plot + ggtitle("Water Quality Over Time in the Backwater")
+  }
+}
+```
+
+Analysis is done through the use of the mean and standard deviation, as well as visual observations
+
+Large peaks are identified as points 2-3  standard deviations above the mean for data that is by-day (ie the average of all times each day is taken and plotted)
+Small peaks are identified as points 2 standard deviations above the mean for specific years (generally initially visually observed)
+These were not identified for removal, rather for analysis. The by-day data was used
+
+Outliers are identified as singluar (or set of) point(s) which do not follow the general curve/ plot of the graph. These are identified using the full graphs (with all time data), so that points with collection errors can be identified and removed. There are low outliers which are significantly lower can nearby points, and high outliers, which are significantly higher.
+These were identified for removal, as occured on the Cleaning Data and Time Series document
+```{r Turbidity Analysis}
+Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='Turb')
+Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='Turb')
+Water_Quality_Graph(Data_Set_MC= FALSE, Month= FALSE, Measurement='Turb')
+Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='Turb')
+```
+
+```{r MC Outliers}
+data_MC_day %>% filter(Turb > mean.default(Turb, na.rm= TRUE) + 3*sd(Turb, na.rm=TRUE)) %>% arrange(Turb)
+
+#Visually identified two here, check
+data_MC %>% filter(Turb>20, Month_MC>7, Year_MC==2017)
+
+data_MC %>% filter(Year_MC==2015) %>% arrange(Date_MC)
+data_MC %>% filter(Year_MC==2016) %>% arrange(desc(Date_MC))
+data_MC %>% filter(Year_MC==2017,!is.na(Turb), Turb>15) %>% arrange(desc(Date_MC)) 
+
+```
+Peaks:
+Aug 13-15 (2016)
+Sept 24-25 (2016)
+July 21-23 (2017)
+
+Single outliers (high)- these were not removed, due to the variation in the other years :
+Sept 25, 2017 (01:03)
+August 20, 2017 (03:10)
+
+Single outliers (low)
+June 30, 2015 (both times)- first day
+Nov 2, 2016 (12:52, almost all of these data points seem to be outliers)- Last day
+Oct 26, 2017 (there is no data dor the 3 days preceeding this point)
+```{r SI Outliers}
+data_SI_day %>% filter(Turb > mean.default(Turb, na.rm= TRUE) + 3*sd(Turb, na.rm=TRUE)) %>% arrange(Turb)
+
+data_SI_day %>% filter(Turb > mean.default(Turb, na.rm= TRUE) + sd(Turb, na.rm=TRUE)) %>% arrange(Turb)
+
+data_SI %>% filter(Turb>5, Month_SI>8, Year_SI==2015)
+data_SI %>% filter(Turb>5, Month_SI>6, Month_SI<9, Year_SI==2016)
+data_SI %>% filter(Turb>10, Month_SI<7, Year_SI==2018)
+```
+Peaks:
+Sept 23 (2016) {1 day before MC outliers}
+July 21 (2017) {the day of the start of MC outliers}
+Aug 30-Sept 1 (2018) {not seen in main channel}
+
+Small peaks
+May 17, 2017
+Aug 29 & Sept 2, 2018 {It is worth noting this incredible peak, not seen in the MC}
+
+Singular Outliers:
+Oct 2, 2015 (13:17) 
+August 16, 2017 (23:28) 
+June 25, 2018 (14:15)
+
+```{r CHLugL Analysis}
+Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='CHLugL')
+Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='CHLugL')
+Water_Quality_Graph(Data_Set_MC= FALSE, Month= FALSE, Measurement='CHLugL')
+Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='CHLugL')
+```
+
+```{r MC Peaks}
+data_MC_day %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 3*sd(CHLugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+data_MC_day %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 2*sd(CHLugL, na.rm=TRUE)) %>% arrange(CHLugL)
+data_SI_day %>% filter(year(Date_SI)== 2017, month(Date_SI)>7, !is.na(CHLugL)) %>% arrange(desc(CHLugL))
+
+
+data_SI %>% filter(CHLugL <0.4) %>% arrange(desc(CHLugL))
+#data_SI %>% filter(CHLugL <1, year(Date_SI)== 2018) %>% arrange(CHLugL)
+```
+
+Large Peaks on:
+July 1-7, 2017
+July 26-31, August 1-9, 2015
+
+Smaller Peaks on:
+Sept 18, 2018 
+
+Single (low) outliers seen on the all-data graph
+June 30-July 1, 2015 (all times)
+
+
+```{r SI Peaks}
+data_SI_day %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 3*sd(CHLugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+data_SI_day %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 2*sd(CHLugL, na.rm=TRUE)) %>% arrange(CHLugL) %>% slice(11:20)
+data_MC_day %>% filter(year(Date_MC)== 2016) %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 2*sd(CHLugL, na.rm=TRUE)) %>% arrange(CHLugL)
+data_MC_day %>% filter(year(Date_MC)== 2018) %>% filter(CHLugL > mean.default(CHLugL, na.rm= TRUE) + 2*sd(CHLugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+
+data_MC %>% filter(CHLugL <3) %>% arrange(desc(CHLugL))
+```
+
+Large Peaks on:
+Sept 5-6, 2015
+April 16-24 & May 4-7, 2016 {corresponds with a smaller MC peak}
+June 6-10, 2017
+May 23-30, 2018 {After a smaller MC peak}
+
+Smaller Peaks on:
+May 22-25, April 18-20, July 11-13 2016
+May 28-30, August 12-16 2018
+{No matching dates to Turbidity}
+
+```{r BGAugL Analysis}
+Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='BGAugL')
+Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='BGAugL')
+Water_Quality_Graph(Data_Set_MC= FALSE, Month= FALSE, Measurement='BGAugL')
+Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='BGAugL')
+```
+
+
+```{r MC Peaks}
+data_MC_day %>% filter(BGAugL > mean.default(BGAugL, na.rm= TRUE) + 3*sd(BGAugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+data_MC_day %>% filter(BGAugL > mean.default(BGAugL, na.rm= TRUE) + 2*sd(BGAugL, na.rm=TRUE)) %>% arrange(BGAugL)
+data_MC_day %>% filter(year(Date_MC)== 2016) %>% filter(BGAugL> mean.default(BGAugL, na.rm= TRUE) + 2*sd(BGAugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+data_MC_day %>% filter(BGAugL<0) %>% arrange(desc(CHLugL))  %>% slice(31:42)
+
+data_MC %>% filter(BGAugL <.4, year(Date_MC)== 2015) %>% arrange(Date_MC)
+```
+
+Large peaks:
+August 1-8 (2015)
+August 12-27 (2018)
+
+Smaller peaks:
+July 8-14 (2016)
+July 4-7, July 31- Aug 2 (2017) {First corresponds to low peak of CHLugL}
+
+Negative:
+Sept 12-Oct 21 (2015)
+
+{No correlations to CHL/Turb}
+
+Single Outlier (low):
+June 30, 2015 (18:06) At the beginning of the data
+
+```{r SI Peaks}
+data_SI_day %>% filter(BGAugL > mean.default(BGAugL, na.rm= TRUE) + 3*sd(BGAugL, na.rm=TRUE)) %>% arrange(desc(CHLugL))
+data_SI_day %>% filter(BGAugL > mean.default(BGAugL, na.rm= TRUE) + 2*sd(BGAugL, na.rm=TRUE)) %>% arrange(BGAugL)
+data_SI_day %>% filter(BGAugL<0) %>% arrange(CHLugL)
+
+data_SI %>% filter(BGAugL>1.5, year(Date_SI)== 2016) %>% arrange(Date_SI)
+```
+
+Large peaks:
+Sept 6 (2015)
+
+Smaller peaks:
+Sept 5-7 (2015) {Corresponds to CHLugL peak in SI}
+June 8-9 (2017) {Corresponds to CHLugL peak in SI}
+May 27-28 (2018) {Corresponds to a CHLugL peak in SI}
+Aug 30 (2018) {A few days after a MC peak and Turb SI peak}
+
+Negative:
+Approx Aug 6-31 (2015)
+Approx June 1-30 (2015)
+{Does not correspond to MC negative values}
+
+Single Outliers:
+Aug 18, 2016 (13:28)
+
+```{r FDOMqsu}
+Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='FDOMqsu')
+Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='FDOMqsu')
+Water_Quality_Graph(Data_Set_MC= FALSE, Month= FALSE, Measurement='FDOMqsu')
+Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='FDOMqsu')
+```
+
+```{r MC Peaks}
+data_MC_day %>% filter(FDOMqsu > mean.default(FDOMqsu, na.rm= TRUE) + 2*sd(FDOMqsu, na.rm=TRUE)) %>% arrange(desc(FDOMqsu))
+data_MC_day %>% filter(year(Date_MC)==2017) %>% filter(FDOMqsu > mean.default(FDOMqsu, na.rm= TRUE) + 2*sd(FDOMqsu, na.rm=TRUE))
+data_MC_day %>%  filter(FDOMqsu < mean.default(FDOMqsu, na.rm= TRUE) - 2*sd(FDOMqsu, na.rm=TRUE)) 
+
+data_MC %>% filter(FDOMqsu<50, year(Date_MC)!= 2015) %>% arrange(Date_MC)
+data_MC %>% filter(FDOMqsu<50, year(Date_MC)== 2015, month(Date_MC)<=7) %>% arrange(Date_MC)
+```
+Peaks:
+There are no outliers
+One peak Oct 17-22 (2017)
+
+Inverted peak:
+Sept 8- Oct 8 (2015) {Corresponds to negative BGA MC}
+
+Single Outliers (low):
+June 30, 2015 (17:53, 18:06) {This date comes up a lot, it should be taken out of the set}
+Nov 2, 2016 (12:52)
+Aug 10, Oct 26 (12:08, 11:19)
+May 21, 2018 (09:38, 11:38, 13:38, 15:38)
+
+```{r SI Peaks}
+data_SI_day %>% filter(FDOMqsu > mean.default(FDOMqsu, na.rm= TRUE) + 2*sd(FDOMqsu, na.rm=TRUE)) %>% arrange(desc(FDOMqsu))
+data_SI_day %>%  filter(FDOMqsu < mean.default(FDOMqsu, na.rm= TRUE) - 2*sd(FDOMqsu, na.rm=TRUE)) 
+
+data_SI %>% filter(FDOMqsu<10, year(Date_SI)!= 2015) %>% arrange(Date_SI)
+```
+
+Peaks:
+There are no upper outliers
+
+Inverted peak:
+July 1-30 (2015)
+Oct 3-15 (2015)
+July 30- 31 (2018)
+Aug 30 (2018) {Corresponds with Turb and BGA SI peaks}
+
+Single Outliers (low):
+June 17, Aug 18 2016 (15:16, 13:28)
+May 11, Sept 15 2017 (11:02, 10:23)
+
+```{r NO3_mgL}
+Water_Quality_Graph(Data_Set_MC= TRUE, Month= FALSE, Measurement='NO3_mgL')
+Water_Quality_Graph(Data_Set_MC=TRUE, ByDay= TRUE, Month= FALSE, Measurement='NO3_mgL')
+Water_Quality_Graph(Data_Set_MC= FALSE, Month= FALSE, Measurement='NO3_mgL')
+Water_Quality_Graph(Data_Set_MC=FALSE, ByDay= TRUE, Month= FALSE, Measurement='NO3_mgL')
+```
+
+```{r MC Peaks}
+data_MC_day %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE)) %>% arrange(desc(NO3_mgL)) 
+data_MC_day %>% filter(year(Date_MC)==2015) %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE))
+data_MC_day %>% filter(year(Date_MC)==2017) %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE))
+data_MC_day %>% filter(year(Date_MC)==2018) %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE))
+
+data_MC %>% filter(NO3_mgL<.3) %>% arrange(Date_MC)
+data_MC %>% filter(NO3_mgL>6, year(Date_MC)== 2015)
+data_MC %>% filter(NO3_mgL>4, year(Date_MC)== 2017)
+```
+
+Large Peaks:
+May 24-May 31 (2016)
+June 13-16 (2016)
+June 26-July 7 (2016) {Right before BGA peak}
+
+Smaller Peaks (Using per-year data):
+July 6-14 (2015)
+June 9-14 (2017) {After CHL peak}
+July 5-8 (2018)
+
+Single outliers (high):
+June 30, 2015 (18:06)
+June 13, 2017 (07:15)
+
+Single Outliers (low):
+June 30, 2015 (17:53)
+May 16, Nov 2 2016 (10:34, 12:52)
+June 14, Aug 10, Oct 26 2017 (12:08, 11:19)
+May 21 2018 (09:38, 11:38, 13:38, 15:38) {This has comeup multiple times, needs to be removed}
+
+```{r SI Analysis}
+data_SI_day %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE)) %>% arrange(desc(NO3_mgL)) 
+data_SI_day %>% filter(year(Date_SI)!=2015) %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 1.5*sd(NO3_mgL, na.rm=TRUE))
+data_SI_day %>% filter(year(Date_SI)==2017) %>% filter(NO3_mgL > mean.default(NO3_mgL, na.rm= TRUE) + 2*sd(NO3_mgL, na.rm=TRUE))
+
+data_SI %>% filter(year(Date_SI)!=2015, NO3_mgL<0) %>% arrange(Date_SI)
+data_SI %>% filter(NO3_mgL>2, year(Date_SI)== 2018) %>% arrange(desc(Date_SI))
+```
+
+Large Peaks:
+July 3-5 (2015) {Before MC peak}
+May 31- June 1 (2016) {Right after MC peak}
+July 1-2 (2016) {During MC peak}
+
+Smaller Peaks (Using per-year data):
+Oct 12-13 (2016)
+July 7-10 (2018) {After MC peak}
+June 6 (2017) {Before MC peak, with BGA and CHL peak}
+
+Single outliers (high):
+Aug 20 & 21 2018 (22:36, 00:36)
+
+Single Outliers (low):
+June 17 2016 (15:16)
+Aug 18 2016 (13:28)
+May 11 2017 (11:02)
+May 10 & 13 (9:37, 10:37, 11:37) (10:01)

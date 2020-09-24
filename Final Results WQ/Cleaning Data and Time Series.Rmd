@@ -1,0 +1,967 @@
+---
+title: "Cleaning and Time Series"
+author: "Megan J"
+date: "June 17, 2020"
+output: html_document
+---
+ Organized Data Sets to Use (from this document):
+MCByDay, SIByDay, 
+ClusteredDataMC, ClusteredDataMCNoDis.csv,
+MC2018.csv, MC2018Day.csv,
+MC2016.csv, MC2016Day.csv,
+MC2017.csv, MC2017Day.csv,
+MC2015.csv, MC2015Day.csv, 2015MCBiHour.csv, 2015MCBiHourDay.csv
+2015MCCal.csv, 2015SICal.csv, 2018SICal.csv
+2015MCCalDay.csv, 2015SICalDay.csv, 2018SICalDay.csv
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(fpc)
+library(cluster)
+set.seed(2002)
+library(forecast)
+library(mice)
+library(xts)
+```
+
+
+
+```{r By Day Data}
+filename1 <- file.path("MC_WQ.csv")
+data_MC_raw <- read_csv(filename1)
+
+filename2 <- file.path("SI_WQ.csv")
+data_SI_raw <- read_csv(filename2)
+
+#Convert to dates
+data_MC<- data_MC_raw %>% mutate(Date= mdy(`YYYY-MM-DD`), Month = month(mdy(`YYYY-MM-DD`)), Year = year(mdy(`YYYY-MM-DD`))) %>% select(Date, Month, Year, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL, `hh:mm`)
+data_SI<- data_SI_raw %>% mutate(Date= mdy(`YYYY-MM-DD`), Month = month(mdy(`YYYY-MM-DD`)), Year = year(mdy(`YYYY-MM-DD`))) %>% select(Date, Month, Year, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL, `hh:mm`)
+
+#Group by day 
+data_MC_day <- data_MC %>% 
+  group_by(Date) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+
+data_SI_day <- data_SI %>% 
+  group_by(Date) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL))
+
+#Pull in discharge
+data_discharge_raw <- dataRetrieval::readNWISdv('05378500', '00060', startDate =  "2015-06-30", endDate = "2018-10-12")
+
+data_discharge_raw_SI <- dataRetrieval::readNWISdv('05378500', '00060', startDate =  "2015-06-01", endDate = "2018-10-12")
+
+#Clean discharge data
+data_Discharge <- data_discharge_raw %>%
+  rename(Discharge= `X_00060_00003`) %>% 
+  select(Date, Discharge)
+
+data_Discharge_SI <- data_discharge_raw_SI %>%
+  rename(Discharge= `X_00060_00003`) %>% 
+  select(Date, Discharge)
+
+#Join the data
+Joint_Data_MC<-left_join(data_MC_day, data_Discharge, by=c("Date"="Date"))# %>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL), !is.na(Discharge))
+summary(Joint_Data_MC)
+Joint_Data_SI<-left_join(data_SI_day, data_Discharge, by=c("Date"="Date")) # %>% filter(!is.na(Turb), !is.na(CHLugL), !is.na(BGAugL), !is.na(FDOMqsu), !is.na(NO3_mgL), !is.na(Discharge))
+
+#Save this data
+write.csv(Joint_Data_MC, "MCByDay.csv", row.names= FALSE)
+write.csv(Joint_Data_SI, "SIByDay.csv", row.names= FALSE)
+```
+
+In working with this mice function, we are trying to replace the NAs for Sept 6, 2018 (11:47)
+
+```{r mice}
+filename1 <- file.path("MC_WQ.csv")
+data_MC_test <- read_csv(filename1)
+
+#
+data_MC_test1<- data_MC_test %>% mutate(month= month(mdy(`YYYY-MM-DD`)), datetime= mdy(`YYYY-MM-DD`)+hms(`hh:mm`), year=year(mdy(`YYYY-MM-DD`) )) %>% select(month, datetime, Turb, CHLugL, year) %>% filter(year ==2018) %>% filter(month==9)
+data_MC_test1
+
+data_MC_test2<- data_MC_test %>% mutate(month= month(mdy(`YYYY-MM-DD`)), datetime= mdy(`YYYY-MM-DD`)+hms(`hh:mm`), year=year(mdy(`YYYY-MM-DD`) )) %>% select(month, datetime, Turb, CHLugL, year) %>% filter(year ==2018) %>% filter(month==9)
+data_MC_test2
+
+md.pattern(data_MC_test1)
+Attempt<-complete(mice(data_MC_test1, m=1, maxit=50, method='pmm', seed=500)) #error
+md.pattern(Attempt)
+
+?mice.impute.pmm
+mice.impute.pmm(y=data_MC_test1$Turb, x= data_MC_test1$datetime, !is.na(data_MC_test1$Turb)) #same error as above
+
+Attempt2<-complete(mice(data_MC_test2, m=1, maxit=50, method='cart', seed=500))
+md.pattern(Attempt2)
+
+data_MC_test2 %>% slice(61:71)
+Attempt2 %>% slice(61:71)
+Attempt2 %>% slice(49:60)
+
+```
+
+## Outliers
+
+
+
+```{r Identifying Outliers}
+Clustered<-read.csv("ClusteredDataMC.csv")
+HighTurb<- Clustered%>% filter(Cluster==6)
+HighTurb
+```
+
+##Outliers from Previous Document:
+
+
+CHL
+Single (low) outliers seen on the all-data graph
+June 30-July 1, 2015 (all times)
+
+
+BGA
+Single Outlier (low):
+June 30, 2015 (18:06) At the beginning of the data
+
+FDOM
+Single Outliers (low):
+ June 30, 2015 (17:53, 18:06) {This date comes up a lot, it should be taken out of the set}
+Nov 2, 2016 (12:52)
+Aug 10, Oct 26 (12:08, 11:19)
+May 21, 2018 (09:38, 11:38, 13:38, 15:38)
+
+NO3
+Single outliers (high):
+ June 30, 2015 (18:06)
+ June 13, 2017 (07:15)
+Single Outliers (low):
+   June 30, 2015 (17:53)
+ May 16, Nov 2 2016 (10:34, 12:52)
+ June 14, Aug 10, Oct 26 2017 (12:08, 11:19)
+May 21 2018 (09:38, 11:38, 13:38, 15:38) {This has comeup multiple times, needs to be removed}
+
+Turbidity
+Single outliers (high):
+Sept 25, 2017 (01:03)
+August 20, 2017 (03:10)
+Single outliers (low)
+June 30, 2015 (both times)- first day
+Nov 2, 2016 (12:52, almost all of these data points seem to be outliers)- Last day
+Oct 26, 2017 (there is no data dor the 3 days preceeding this point)
+
+
+##Outliers Grouped By Year
+June 30, 2015 (all****) Removed 
+July 1, 2015 (all) Removed 
+
+May 16 (10:34) Dealt with
+Nov 2, 2016 (12:52**) Removed 
+
+
+June 13, 2017 (07:15*) 
+June 14, 2017 (unknown time)
+Aug 10, 2017 (12:08*)  
+Oct 26, 2017 (all**) 
+
+May 10, 2018 (all times) Removed
+May 21, 2018 (09:38, 11:38, 13:38, 15:38**) Removed
+
+
+## Identifying Missing Points
+```{r Identifying the Missing Points}
+data_MC
+MC_2018 <- data_MC_raw %>% filter(yr==2018) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=MC_2018,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+#June 22, 11 am
+#July 10, 11 am
+
+MC_2017 <- data_MC_raw %>% filter(yr==2017) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=MC_2017,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+# Lots of issues. Perhaps focus on July 8- October 7
+
+MC_2016 <- data_MC_raw %>% filter(yr==2016) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=MC_2016,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+# No issues
+
+MC_2015 <- data_MC_raw %>% filter(yr==2015) %>% select(c(samp.date="YYYY-MM-DD",samp.time="hh:mm",Turb,CHLugL, BGAugL, FDOMqsu, NO3_mgL)) %>% mutate(month = month(mdy(samp.date)), day=day(mdy(samp.date)), hour=hour(hms(samp.time)), samp.date.time = mdy(samp.date) + hms(samp.time))
+ggplot(data=MC_2015,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+#Perhaps focus July 2- Sept 30. In October, the data is taken every other hour rather than every hour
+```
+
+
+##IDENTIFYING the NAs AND CLEANING--------------------------------------------------
+```{r Functions for Cleaning}
+#Function to find the average for a data point that is set at NA
+#DataSet is the data set
+#DataSetVar is the data set with the var, in the format DataSet$Var
+#DateTime is a String that is in the format "YYYY-MM-DD HH:MM:SS"
+#The function returns the average value of the data directly above and below the inputted point (DateTime) for the given variable
+
+reassign<- function(DataSet, DataSetVar, DateTime){
+  t<-((DataSetVar[which(DataSet$samp.date.time==DateTime)-3]+
+         DataSetVar[which(DataSet$samp.date.time==DateTime)-1])/2)
+  return(t)
+}
+
+#A function that finds the average of 2 points
+#DataSet is the data set
+#DataSetVar is the data set with the var, in the format DataSet$Var
+##DateTime is a String that is in the format "YYYY-MM-DD HH:MM:SS". Note that this should be the time and data point 
+#directly AFTER where the inputted value would be
+#The function returns the average value of the inputted data point and the one directly before, so that a new point can
+#be added with the returned value.
+
+Assign<- function(DataSet, DataSetVar, DateTime){
+  t<-((DataSetVar[which(DataSet$samp.date.time==DateTime)-2]+
+         DataSetVar[which(DataSet$samp.date.time==DateTime)-3])/2)
+  return(t)
+}
+
+Assign2<- function(DataSet, DataSetVar, Date, Hour){
+  t<-((DataSetVar[which(DataSet$date==Date & DataSet$hour == Hour)]+
+         DataSetVar[which(DataSet$date==Date & DataSet$hour == Hour)+1])/2)
+  return(t)
+}
+#A function that creates a new data point with the inputted values
+#DataSet is the data set.
+#Value is the value of the point directly after where the new point will be, in the format "YYYY-MM-DD HH:MM:SS"
+#samp.date is the date of the new point, in the format "MM/DD/YYYY"
+#samp.time is the time of the new point, in the format "HH:MM:SS"
+#month, day and hour are integers of the new point
+#samp.date.time is the date and time of the new point, in the format, "YYYY-MM-DD HH:MM:SS". 
+#In error, the function adds 4 hours to the samp.date.time. As there is no current solution, one must substract 4 hours
+#The function returns a new point with all of the given inputs
+NewPoint<- function(DataSet, Value, samp.date, samp.time, month, day, hour, samp.date.time){
+  NewPoint1Turb <-Assign(DataSet, DataSet$Turb, Value)
+  NewPoint1CHL <-Assign(DataSet, DataSet$CHLugL, Value)
+  NewPoint1BGA <-Assign(DataSet, DataSet$BGAugL, Value)
+  NewPoint1FDOM <-Assign(DataSet, DataSet$FDOMqsu, Value)
+  NewPoint1NO3 <-Assign(DataSet, DataSet$NO3_mgL, Value)
+  NewPoint <- data.frame("samp.date"= samp.date, "samp.time"= samp.time, "Turb" = NewPoint1Turb, 
+                         "CHLugL"= NewPoint1CHL,"BGAugL"= NewPoint1BGA,"FDOMqsu"= NewPoint1FDOM,
+                         "NO3_mgL"= NewPoint1NO3, "month"=  month, "day"= day, "hour"= hour,
+                         "samp.date.time"= samp.date.time)
+  return(NewPoint)
+}
+
+NewPoint2<- function(DataSet, date, hour, day, month){
+  NewPoint1Turb <-Assign2(DataSet, DataSet$Turb, date, hour-2)
+  NewPoint1CHL <-Assign2(DataSet, DataSet$CHLugL, date, hour-2)
+  NewPoint1BGA <-Assign2(DataSet, DataSet$BGAugL, date, hour-2)
+  NewPoint1FDOM <-Assign2(DataSet, DataSet$FDOMqsu, date, hour-2)
+  NewPoint1NO3 <-Assign2(DataSet, DataSet$NO3_mgL, date, hour-2)
+  NewPoint <- data.frame("date"= date(date), "Turb" = NewPoint1Turb, 
+                         "CHLugL"= NewPoint1CHL,"BGAugL"= NewPoint1BGA,"FDOMqsu"= NewPoint1FDOM,
+                         "NO3_mgL"= NewPoint1NO3, "month"=  month, "day"= day, "hour"= hour)
+  return(NewPoint)
+}
+
+```
+
+
+
+```{r 2018 NA values}
+#Identify NAs, remove those at the beginning/end of the data
+md.pattern(MC_2018)
+MC_2018_Clean<- MC_2018 %>% filter(!(month %in% c(5, 10)))
+MC_2018_Clean %>% filter(is.na(Turb)) #Sept 6 (11:47)
+MC_2018_Clean%>% filter(samp.date=="9/6/2018")
+
+#Reassigning the NA values for all of the variables for the missing point Sept 6 at 11:47
+MC_2018_Clean$Turb[(which(MC_2018_Clean$samp.date.time=="2018-09-06 11:47:00")-2)] <- reassign(MC_2018_Clean, MC_2018_Clean$Turb, "2018-09-06 11:47:00")
+
+MC_2018_Clean$NO3_mgL[(which(MC_2018_Clean$samp.date.time=="2018-09-06 11:47:00")-2)] <- reassign(MC_2018_Clean, MC_2018_Clean$NO3_mgL, "2018-09-06 11:47:00")
+
+MC_2018_Clean$CHLugL[(which(MC_2018_Clean$samp.date.time=="2018-09-06 11:47:00")-2)] <- reassign(MC_2018_Clean, MC_2018_Clean$CHLugL, "2018-09-06 11:47:00")
+
+MC_2018_Clean$BGAugL[(which(MC_2018_Clean$samp.date.time=="2018-09-06 11:47:00")-2)] <- reassign(MC_2018_Clean, MC_2018_Clean$BGAugL, "2018-09-06 11:47:00")
+
+MC_2018_Clean$FDOMqsu[(which(MC_2018_Clean$samp.date.time=="2018-09-06 11:47:00")-2)] <- reassign(MC_2018_Clean, MC_2018_Clean$FDOMqsu, "2018-09-06 11:47:00")
+
+MC_2018_Clean%>% filter(samp.date=="9/6/2018")
+```
+
+```{r 2018 Outliers and Missing Points}
+
+#The outliers:
+# May 10, 2018 (all times)
+# May 21, 2018 (09:38, 11:38, 13:38, 15:38**)
+# July 29-Aug 1, 2018 (all times)
+
+#The missing points(from above):
+#June 22, 11 am
+#July 10, 11 am
+
+MC_2018_Clean%>% filter(samp.date=="7/10/2018")
+MC_2018_Clean%>% filter(samp.date=="6/22/2018")
+
+#Adding the missing points, sorting the data
+Attempt1<-NewPoint(MC_2018_Clean, "2018-06-22 13:26:00", "6/22/2018", "11:30:00", 6, 22, 11, "2018-06-22 07:30:00") #For some really odd reason, the samp.date.time adds 4 hours
+Attempt2<-NewPoint(MC_2018_Clean, "2018-07-10 13:43:00", "7/10/2018", "11:35:00", 7, 10, 11, "2018-07-10 07:35:00")
+MC_2018_Clean<- rbind(MC_2018_Clean, Attempt1, Attempt2)
+MC_2018_Clean<- MC_2018_Clean %>% arrange(samp.date.time) %>% mutate(date= date(mdy(samp.date)))
+
+#Checking that its all good
+MC_2018_Clean%>% filter(samp.date=="6/22/2018")
+MC_2018_Clean%>% filter(samp.date=="7/10/2018")
+
+#Dealing the outliers:
+summary(MC_2018_Clean)
+
+#cheacking to make sure there are outliers for CHL: Decide they aren't; error in identifying outliers?
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<="2018-08-05", mdy(samp.date)> "2018-08-01"))
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<"2018-07-29", mdy(samp.date)>= "2018-07-26"))
+summary(MC_2018_Clean%>% filter(mdy(samp.date)<="2018-08-01", mdy(samp.date)>= "2018-07-29"))
+MC_2018_Clean %>% filter(mdy(samp.date)<"2018-08-03", mdy(samp.date)>= "2018-07-29") %>% ggplot(mapping=aes(x= samp.date.time, y= CHLugL)) + geom_point()
+
+```
+
+```{r 2017 NA values}
+md.pattern(MC_2017)
+MC_NA<- MC_2017%>% filter(is.na(Turb))
+MC_NA
+ggplot(data= MC_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+#Sept 12  (13:13)
+#Several other issues in October
+
+#Outliers:
+
+# May 11, 2017 (11:02) Wrong? CHL
+# June 13, 2017 (07:15*) 
+# June 14, 2017 (unknown time)
+# July 21-23,2017 (all- Turb) Not dealt with
+# Aug 10, 2017 (12:08*)  
+# Sept 15 2017 (10:23) wrong? CHL 
+# Oct 26, 2017 (all**) 
+
+#Plan to clean:
+#1. Cut data to be June 9-Oct 6 DONE
+#2. Cut data to be every other hour (odd hours) DONE
+#3. Handle NA values on Sept 12 at 13:13 with assign DONE
+#4. Handle missing points July 5 (15:00)- July 6 (12:00) with mice DONE
+#5. Handle outliers for nitrate on June 13 and 14, Aug 10 DONE
+
+#3. Handle NA values on Sept 12 at 13:13 with assign
+#CHANGED the reassign function to be 2 higher: not sure why there was a problem
+MC_2017_Clean2<- MC_2017
+
+MC_2017_Clean2$Turb[(which(MC_2017_Clean2$samp.date.time=="2017-09-12 13:13:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$Turb, "2017-09-12 13:13:00")
+MC_2017_Clean2$CHLugL[(which(MC_2017_Clean2$samp.date.time=="2017-09-12 13:13:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$CHLugL, "2017-09-12 13:13:00")
+MC_2017_Clean2$BGAugL[(which(MC_2017_Clean2$samp.date.time=="2017-09-12 13:13:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$BGAugL, "2017-09-12 13:13:00")
+MC_2017_Clean2$FDOMqsu[(which(MC_2017_Clean2$samp.date.time=="2017-09-12 13:13:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$FDOMqsu, "2017-09-12 13:13:00")
+MC_2017_Clean2$NO3_mgL[(which(MC_2017_Clean2$samp.date.time=="2017-09-12 13:13:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$NO3_mgL, "2017-09-12 13:13:00")
+
+#5. Handle outliers for nitrate on June 13 and 14, Aug 10
+
+MC_2017_Clean2$Turb[(which(MC_2017_Clean2$samp.date.time=="2017-08-10 12:08:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$Turb, "2017-08-10 12:08:00")
+MC_2017_Clean2$CHLugL[(which(MC_2017_Clean2$samp.date.time=="2017-08-10 12:08:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$CHLugL, "2017-08-10 12:08:00")
+MC_2017_Clean2$BGAugL[(which(MC_2017_Clean2$samp.date.time=="2017-08-10 12:08:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$BGAugL, "2017-08-10 12:08:00")
+MC_2017_Clean2$FDOMqsu[(which(MC_2017_Clean2$samp.date.time=="2017-08-10 12:08:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$FDOMqsu, "2017-08-10 12:08:00")
+MC_2017_Clean2$NO3_mgL[(which(MC_2017_Clean2$samp.date.time=="2017-08-10 12:08:00")-4)] <- reassign(MC_2017_Clean2, MC_2017_Clean2$NO3_mgL, "2017-08-10 12:08:00")
+
+#Reassign function changed back to be two below, again not sure why problem occured
+MC_2017_Clean3<- MC_2017_Clean2
+MC_2017_Clean3$NO3_mgL[(which(MC_2017_Clean3$samp.date.time=="2017-06-13 07:15:00")-2)] <- reassign(MC_2017_Clean3, MC_2017_Clean3$NO3_mgL, "2017-06-13 07:15:00")
+MC_2017_Clean3$NO3_mgL[(which(MC_2017_Clean3$samp.date.time=="2017-06-14 05:15:00")-2)] <- reassign(MC_2017_Clean3, MC_2017_Clean3$NO3_mgL, "2017-06-14 05:15:00")
+
+
+
+#1. Cut data to be June 9-Oct 6 and 2. Cut data to be every other hour (odd hours)
+MC_2017_Clean <- MC_2017_Clean3 %>% filter ( !is.na(Turb), !(month==10 & day>6)) %>%
+  mutate(`HourDiv2`= trunc(hour(samp.date.time)/2), hour=c(1)) %>% 
+  group_by(date(mdy(samp.date)), `HourDiv2`) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), day= mean(day), month= mean(month), hour=mean(hour)) 
+
+MC_2017_Clean$hour <- ((MC_2017_Clean$`HourDiv2`*2)+1)
+
+md.pattern(MC_2017_Clean)
+
+#Handle missing points July 5 (13:00)- July 6 (15:00)
+
+MC_2017_Clean<- MC_2017_Clean %>% select(!`HourDiv2`) %>% rename(date = `date(mdy(samp.date))`)
+
+NP070515 <- data.frame("date"= date("2017-07-05"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 5, "hour"= 15)
+NP070517 <- data.frame("date"= date("2017-07-05"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 5, "hour"= 17)
+NP070519 <- data.frame("date"= date("2017-07-05"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 5, "hour"= 19)
+NP070521 <- data.frame("date"= date("2017-07-05"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 5, "hour"= 21)
+NP070523 <- data.frame("date"= date("2017-07-05"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 5, "hour"= 23)
+
+NP070601 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 1)
+NP070603 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 3)
+NP070605 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 5)
+NP070607 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 7)
+NP070609 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 9)
+NP070611 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 11)
+NP070613 <- data.frame("date"= date("2017-07-06"), "Turb" = NA, 
+                         "CHLugL"= NA,"BGAugL"= NA,"FDOMqsu"= NA,
+                         "NO3_mgL"= NA, "month"=  7, "day"= 6, "hour"= 13)
+MC_2017_Clean4<- rbind(MC_2017_Clean, NP070515, NP070517, NP070519, NP070521, NP070523, NP070601, NP070603, NP070605, NP070607, NP070609, NP070611, NP070613)
+
+MC_2017_Clean4<- MC_2017_Clean4 %>% arrange(date, hour)
+
+MC_2017_Clean5<-complete(mice(MC_2017_Clean4, m=1, maxit=50, method='cart', seed=500))
+```
+
+```{r 2016 NA Values and Ouliers}
+md.pattern(MC_2016)
+MC_NA<- MC_2016%>% filter(is.na(Turb))
+ggplot(data= MC_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+MC_NA
+MC_NA %>% slice(31:41)
+#May 16 (10:34) Has a nitrate reading
+#June 17 (10:38)- June 20 (14:38)
+#Oct 11 (10:49)
+
+MC_2016_Clean <- MC_2016
+
+#May 16, 10:34
+MC_2016_Clean$Turb[(which(MC_2016_Clean$samp.date.time=="2016-05-16 10:34:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$Turb, "2016-05-16 10:34:00")
+MC_2016_Clean$CHLugL[(which(MC_2016_Clean$samp.date.time=="2016-05-16 10:34:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$CHLugL, "2016-05-16 10:34:00")
+MC_2016_Clean$BGAugL[(which(MC_2016_Clean$samp.date.time=="2016-05-16 10:34:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$BGAugL, "2016-05-16 10:34:00")
+MC_2016_Clean$FDOMqsu[(which(MC_2016_Clean$samp.date.time=="2016-05-16 10:34:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$FDOMqsu, "2016-05-16 10:34:00")
+
+#Oct 11, 10:49
+MC_2016_Clean$Turb[(which(MC_2016_Clean$samp.date.time=="2016-10-11 10:49:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$Turb, "2016-10-11 10:49:00")
+MC_2016_Clean$CHLugL[(which(MC_2016_Clean$samp.date.time=="2016-10-11 10:49:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$CHLugL, "2016-10-11 10:49:00")
+MC_2016_Clean$BGAugL[(which(MC_2016_Clean$samp.date.time=="2016-10-11 10:49:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$BGAugL, "2016-10-11 10:49:00")
+MC_2016_Clean$FDOMqsu[(which(MC_2016_Clean$samp.date.time=="2016-10-11 10:49:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$FDOMqsu, "2016-10-11 10:49:00")
+MC_2016_Clean$NO3_mgL[(which(MC_2016_Clean$samp.date.time=="2016-10-11 10:49:00")-2)] <- reassign(MC_2016_Clean, MC_2016_Clean$NO3_mgL, "2016-10-11 10:49:00")
+
+#June 17 (10:38)- June 20 (14:38) THERE IS LIKELY A BETTER METHOD
+Attempt<-complete(mice(MC_2016_Clean, m=1, maxit=50, method='cart', seed=500))
+md.pattern(Attempt)
+
+
+
+#Handle Outliers
+#May 16 (10:34) ALTERED
+#June 17 2016 (15:16) WRONG
+#Aug 13 & 14, 2016 (all- Turb) NOT GOING TO HANDLE
+#Aug 18, 2016 (13:28) WRONG
+#Nov 2, 2016 (12:52*) REMOVED
+
+Attempt$NO3_mgL[(which(Attempt$samp.date.time=="2016-05-16 10:34:00")-2)] <- reassign(Attempt, Attempt$NO3_mgL, "2016-05-16 10:34:00")
+
+MC_2016_Clean2 <- Attempt %>% mutate(`NormHour`= hour +1) %>% filter(!(samp.date.time== "2016-11-02 12:52:00")) %>%
+  mutate(date= date(mdy(samp.date)))
+```
+
+```{r 2015 Shortened}
+md.pattern(MC_2015)
+MC_NA<- MC_2015%>% filter(is.na(Turb))
+ggplot(data= MC_NA, aes(x=day, y=hour))+geom_point()+facet_wrap(~month)
+MC_NA
+MC_NA %>% slice(74:84)
+#July 1 (17:37) - July 5 (4:37) Perhaps just start July 5
+
+MC_2015_Clean <- MC_2015 %>% filter (!(month==7 & day %in% c(1, 2, 3, 4, 5))) %>% filter(!(month %in% c(6, 10)))
+# Removed about 400 observations, cleaned to July 5 - Sept 30
+
+```
+
+```{r 2015 Full}
+
+#This will include October, which doesn't have hourly data. Change all of the data to bi-hourly, on the odd hour
+MC_2015_Clean_Full <- MC_2015 %>% filter (!is.na(Turb), !(month==7 & day==1)) %>% filter(!(month %in% c(6))) %>%
+  mutate(`HourDiv2`= trunc(hour(samp.date.time)/2), hour=c(1)) %>% 
+  group_by(date(mdy(samp.date)), `HourDiv2`) %>%
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), day= mean(day), month= mean(month), hour=mean(hour)) 
+
+MC_2015_Clean_Full$hour <- ((MC_2015_Clean_Full$`HourDiv2`*2)+1)*100
+MC_2015_Clean_Full$hour<- str_pad(MC_2015_Clean_Full$hour, 4, pad="0")
+MC_2015_Clean_Full$hour <-  hour(as.POSIXlt(MC_2015_Clean_Full$hour, tryFormats= "%H%M"))
+
+MC_2015_Clean_Full<-
+
+glimpse(MC_2015_Clean_Full)
+
+MC_2015_Clean_Full<- MC_2015_Clean_Full %>% select(!`HourDiv2`) %>% rename(date = `date(mdy(samp.date))`)
+
+ggplot(data=MC_2015_Clean_Full,aes(x=day,y=hour))+geom_point()+facet_wrap(~month)
+
+#Missing a point on Oct 15 at 11 am
+Oct152015<-NewPoint2(MC_2015_Clean_Full, "2015-10-15", 11, 15, 10)
+
+MC_2015_Clean_Full<- rbind(MC_2015_Clean_Full, Oct152015)
+MC_2015_Clean_Full<- MC_2015_Clean_Full %>% arrange(date, hour)
+```
+
+##Discharge Data-----------------------------------
+```{r Discharge 2018}
+#IMPORT--------
+summary(MC_2018_Clean)
+dis_MC_2018 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2018-05-31", endDate = "2018-09-30")
+dis_MC_2018_Clean<- dis_MC_2018 %>% filter(!is.na(`X_00060_00000`)) %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+
+
+dis_MC_2018_Clean$hour <- ((dis_MC_2018_Clean$`HourDiv2`*2)+1)*100
+dis_MC_2018_Clean$hour<- str_pad(dis_MC_2018_Clean$hour, 4, pad="0")
+dis_MC_2018_Clean2 <- dis_MC_2018_Clean%>% mutate(Hour= hour(as.POSIXlt(hour, tryFormats= "%H%M"))) %>%
+  select(!`HourDiv2`) 
+
+
+
+summary(dis_MC_2018_Clean)
+
+MC_2018_Clean
+
+
+#CLEAN-------
+NewPointsDis<-data.frame("date"= c(date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-17"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18"), date("2018-09-18")), "Discharge"= c(NA), "hour"= c("1100", "1500", "1900", "2300", "0300", "0700", "1100", "1500"), "Hour"=c(11, 15, 19, 23, 3, 7, 11, 15))
+
+MC_NewPointsDis<- rbind(dis_MC_2018_Clean2, NewPointsDis)
+MC_NewPointsDis<- MC_NewPointsDis %>% arrange(date, Hour)
+
+dis_MC_2018_Clean3<-complete(mice(MC_NewPointsDis, m=1, maxit=50, method='pmm', seed=500))
+
+
+#JOIN -----------------
+MC_2018_Clean <- MC_2018_Clean %>% mutate(Date= date(date))
+
+MC_2018_Clean
+
+MC_Clean <- left_join(MC_2018_Clean, dis_MC_2018_Clean3, by=c("Date"="date", "hour"="Hour"))
+write.csv(MC_Clean, file="2018MC.csv", row.names = FALSE)
+
+#By Day
+MC_Data<-read.csv("2018MC.csv")
+MC_Data_Day<- MC_Data %>% group_by(Date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), Discharge= mean(Discharge))
+
+write.csv(MC_Data_Day, file="MC2018Day.csv", row.names = FALSE)
+```
+
+```{r Discharge 2017}
+dis_MC_2017 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2017-06-09", endDate = "2017-10-07")
+dis_MC_2017_Clean<- dis_MC_2017 %>% filter(!is.na(`X_00060_00000`))  %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+dis_MC_2017_Clean$hour <- ((dis_MC_2017_Clean$`HourDiv2`*2)+1)
+dis_MC_2017_Clean <- dis_MC_2017_Clean%>% select(!`HourDiv2`)
+
+md.pattern(dis_MC_2017_Clean)
+
+MC_Clean <- left_join(MC_2017_Clean5, dis_MC_2017_Clean, by=c("date"="date", "hour"="hour"))
+write.csv(MC_Clean, file="2017MC.csv", row.names = FALSE)
+
+MC_Data_Day<- MC_Clean %>% group_by(date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), Discharge= mean(Discharge), month= mean(month), day= mean(day))
+
+write.csv(MC_Data_Day, file="MC2017Day.csv", row.names = FALSE)
+```
+
+
+```{r Discharge 2016}
+dis_MC_2016 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2016-04-13", endDate = "2016-11-02")
+dis_MC_2016_Clean<- dis_MC_2016 %>% filter(!is.na(`X_00060_00000`))  %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+dis_MC_2016_Clean$hour <- ((dis_MC_2016_Clean$`HourDiv2`*2)+1)
+dis_MC_2016_Clean <- dis_MC_2016_Clean%>% select(!`HourDiv2`)
+
+md.pattern(dis_MC_2016_Clean)
+
+MC_Clean <- left_join(MC_2016_Clean2, dis_MC_2016_Clean, by=c("date"="date", "NormHour"="hour"))
+write.csv(MC_Clean, file="2016MC.csv", row.names = FALSE)
+
+#By DAY
+MC_Data_Day<- MC_Clean %>% group_by(date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), Discharge= mean(Discharge), month= mean(month), day= mean(day))
+
+write.csv(MC_Data_Day, file="MC2016Day.csv", row.names = FALSE)
+
+```
+
+
+
+```{r Discharge 2015}
+#July-Sept----------
+summary(MC_2015_Clean)
+dis_MC_2015 <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2015-07-05", endDate = "2015-09-30")
+dis_MC_2015_Clean<- dis_MC_2015 %>% filter(!is.na(`X_00060_00000`)) %>%
+  mutate( date= date(dateTime),Hour= hour(dateTime)) %>% 
+  group_by(date, Hour) %>% 
+  summarise(Discharge= mean(`X_00060_00000`))
+
+
+#dis_MC_2015_Clean$hour <- ((dis_MC_2015_Clean$HourD)*100)
+#dis_MC_2015_Clean$hour<- str_pad(dis_MC_2015_Clean$hour, 4, pad="0")
+#dis_MC_2018_Clean2 <- dis_MC_2015_Clean%>% mutate(Hour= hour(as.POSIXlt(hour, tryFormats= "%H%M"))) %>%
+ # select(!Hour) 
+
+MC_2015_Clean <- MC_2015_Clean %>% mutate(Date= date(samp.date.time))
+
+MC_2018_Clean
+
+MC_Clean <- left_join(MC_2015_Clean, dis_MC_2015_Clean, by=c("Date"="date", "hour"="Hour"))
+write.csv(MC_Clean, file="2015MC.csv", row.names = FALSE)
+
+
+#MC_2015_Clean
+
+
+
+
+#BY DAY Data (averaged per day)-------
+MC_Data<-read.csv("2015MC.csv")
+MC_Data_Day<- MC_Data %>% group_by(Date) %>% 
+  summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), Discharge= mean(Discharge))
+
+write.csv(MC_Data_Day, file="MC2015Day.csv", row.names = FALSE)
+
+
+
+
+
+#FULL data --------
+#(including October, data will be every other hour on the odd hour)
+
+dis_MC_2015_full <- dataRetrieval::readNWISuv('05378500', '00060', startDate =  "2015-07-05", endDate = "2015-10-21")
+dis_MC_2015_Clean_full<- dis_MC_2015_full %>% filter(!is.na(`X_00060_00000`)) %>%
+  mutate( date= date(dateTime),`HourDiv2`= trunc(hour(dateTime)/2), hour=c(1)) %>% 
+  group_by(date, HourDiv2) %>% 
+  summarise(Discharge= mean(`X_00060_00000`), hour= mean(hour))
+
+
+dis_MC_2015_Clean_full$hour <- ((dis_MC_2015_Clean_full$`HourDiv2`*2)+1)
+dis_MC_2015_Clean_full <- dis_MC_2015_Clean_full %>%
+  select(!`HourDiv2`) 
+
+#Combine Data
+MC_Clean_full <- left_join(MC_2015_Clean_Full, dis_MC_2015_Clean_full, by=c("date"="date", "hour"="hour"))
+write.csv(MC_Clean_full, file="2015MCBiHour.csv", row.names = FALSE)
+
+
+
+#FULL BY DAY---------
+MC_Clean_full_day <- MC_Clean_full %>% group_by(date) %>% summarize(Turb = mean(Turb), CHLugL = mean(CHLugL), BGAugL= mean(BGAugL), FDOMqsu= mean(FDOMqsu), NO3_mgL = mean(NO3_mgL), Discharge= mean(Discharge), day= mean(day), month= mean(month))
+write.csv(MC_Clean_full_day, file="2015MCBiHourDay.csv", row.names = FALSE)
+
+
+```
+
+##Time Series
+
+```{r Times Series Function}
+
+MC_Clean<-read.csv("2018MC.csv")
+summary(MC_Clean)
+MC_Clean_stan<- scale(MC_Clean[c(3, 4, 5, 6, 7, 13)])
+
+ts_turb<-ts(MC_Clean$Turb, start=1, end= 122, freq=12)
+ts_CHL<-ts(MC_Clean$CHLugL, start=1, end= 122, freq=12)
+ts_BGA <-ts(MC_Clean$BGAugL, start=1, end= 122, freq=12)
+ts_NO3 <-ts(MC_Clean$NO3_mgL, start=1, end= 122, freq=12)
+ts_FDOM <-ts(MC_Clean$FDOMqsu, start=1, end= 122, freq=12)
+ts_Dis<- ts(MC_Clean$Discharge, start= 1, end= 122, freq=12)
+ts_FDOM_Q <-ts(MC_2018_Clean$FDOMqsu, start=1, end= 4, freq=30)
+
+plot(ts_turb)
+plot(ts_CHL)
+plot(ts_BGA)
+plot(ts_NO3)
+plot(ts_FDOM)
+plot(ts_Dis)
+
+fit <- stl(ts_turb, s.window="period")
+plot(fit)
+
+plot.ts(ts_turb, ts_CHL, gpars=list(xlab= "Days from June 1, 2018", col= c("blue","red")))
+legend(c("Turbidity", NA, "Chlorophyll" ), fill= c("black", "blue","red"))
+
+Time_Series_2018 <- function(End, Freq, Turb=FALSE, CHL=FALSE, BGA=FALSE, FDOM=FALSE, NO3= FALSE, Dis= FALSE ){
+  if(Freq==12){
+    Xlab= "Days from June 1"
+  }
+  
+  if(Freq==30){
+    Xlab= "Month June-Sept"
+  }
+  if(Freq==4){
+    Xlab= "2018 June- Sept"
+  }
+  
+  
+  if(Turb==TRUE){ts_turb<-ts(MC_Clean$Turb, start=1, end= End, freq=Freq)} else{ts_turb = NA}
+  if(CHL==TRUE){ts_CHL<-ts(MC_Clean$CHLugL, start=1, end= End, freq=Freq)} else{ts_CHL = NA}
+  if(BGA==TRUE){ts_BGA <-ts(MC_Clean$BGAugL, start=1, end= End, freq=Freq)} else{ts_BGA = NA}
+  if(NO3==TRUE){ts_NO3 <-ts(MC_Clean$NO3_mgL, start=1, end= End, freq=Freq)} else{ts_NO3 = NA}
+  if(FDOM==TRUE){ts_FDOM <-ts(MC_Clean$FDOMqsu, start=1, end= End, freq=Freq)} else{ts_FDOM = NA}
+  if(Dis==TRUE){ts_Dis <-ts(MC_Clean$Discharge, start=1, end= End, freq=Freq)} else{ts_Dis = NA}
+  
+ts.plot(ts_turb, ts_CHL, ts_BGA, ts_NO3, ts_FDOM, ts_Dis, xlab= Xlab, main="Change in Water Quality Over Time", gpars=list(col= c("black", "blue","red", "green", "purple", "gray")))
+  legend("right", cex= .67, legend=c("Turbidity", " Chlorophyll", "Blue Green Algae", "Dissolved Organic Matter"), col= c("black", "blue","red", "purple"), lty=1)
+}
+?ts.plot
+Time_Series_2018(30, 12,  Turb=TRUE, CHL=TRUE, BGA=TRUE, FDOM=TRUE, NO3= FALSE, Dis= FALSE)
+
+#Need to standardize, add a key
+```
+
+```{r Time Series From Notes}
+ts_turb<-ts(MC_2018_Clean$Turb, start=1, end= 4, freq=30)
+ts_Nitrate<- ts(MC_Clean$NO3_mgL, start=1, end= 4, freq=30)
+plot(ts_Nitrate) #time series plot
+plot(stl(ts_Nitrate, s.window="period")) #broken into 4 part
+
+MC_Clean2<- MC_Clean %>% filter(!is.na(Discharge))
+ts_Discharge<- ts(MC_Clean$CHLugL, start=1, end= 122, freq=12)
+plot(ts_Discharge) #time series plot
+plot(stl(ts_Discharge, s.window="period")) #broken into 4 part
+
+MC_Clean2<- MC_Clean %>% filter(month==6)
+ts_CHL<- ts(MC_Clean2$CHLugL, start=1, end= 30, freq=12)
+plot(stl(ts_CHL, s.window="period"), main="Time Series of Chlorophyll Levels in June, 2018")
+
+MC_Clean2<- MC_Clean %>% filter(month==6)
+ts_NO3<- ts(MC_Clean2$NO3_mgL, start=1, end= 30, freq=12)
+plot(stl(ts_NO3, s.window="period"), main="Time Series of Nitrate Levels in June, 2018")
+
+MC_Clean2<- MC_Clean %>% filter(month==6)
+ts_BGA<- ts(MC_Clean2$BGAugL, start=1, end= 30, freq=12)
+plot(stl(ts_BGA, s.window="period"), main="Time Series of Blue Green Algae Levels in June, 2018")
+
+ts.plot(decompose(ts_NO3)$seasonal, decompose(ts_CHL)$seasonal, main="Daily Time Series for June, 2018", gpars=list(col= c("black", "blue")))
+  #legend("topright", cex= .67, legend=c("Nitrate", "Chlorophyll"), col= c("black", "blue"), lty=1))
+
+
+seasonplot(ts_turb) #not helpful: for Jan- Dec
+plot(decompose(ts_turb)) #broken into 4 plots
+decompose(ts_turb)$trend #extract certain elements: It thinks that the 12 hours are 12 months
+plot(HoltWinters(ts_turb))
+forecast(ts_turb, 10)
+plot(forecast(ts_turb, 10))
+fit<- meanf(ts_turb[1:1363], h=100)
+accuracy(fit)
+accuracy(fit, ts_turb[1365:1464])
+plot(fit, ts_turb[1364:1463])
+```
+
+
+```{r Fixing the dates}
+Working<- read.csv("MC2018Day.csv")
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2018Day.csv", row.names = FALSE)
+
+#-------------------------------
+
+Working<- read.csv("MC2017Day.csv")
+
+Working$date<- ymd(Working$date)
+
+write.csv(Working, file="MC2017Day.csv", row.names = FALSE)
+#-------------------------------
+
+Working<- read.csv("MC2016Day.csv")
+
+colnames(Working)[1]<- "Date"
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2016Day.csv", row.names = FALSE)
+
+#--------------------------------
+
+Working<- read.csv("MC2015Day.csv")
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2015Day.csv", row.names = FALSE)
+
+#=================================
+
+Working<- read.csv("2018MC.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= mdy(samp.date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2018.csv", row.names = FALSE)
+
+#---------------------------------
+
+Working<- read.csv("2017MC.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2017.csv", row.names = FALSE)
+
+#---------------------------------
+
+Working<- read.csv("2016MC.csv")
+
+Working<- Working %>%mutate(HourProper= NormHour)
+
+Working$HourProper<-  paste(Working$NormHour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= NormHour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2016.csv", row.names = FALSE)
+
+#---------------------------------
+
+Working<- read.csv("2015MCBiHour.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="MC2015.csv", row.names = FALSE)
+
+#==================================
+
+Working<- read.csv("SI2018BiHourly.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="SI2018B.csv", row.names = FALSE)
+
+#-----------------------------------
+
+Working<- read.csv("SI2016BiHourly.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="SI2016B.csv", row.names = FALSE)
+
+#-----------------------------------
+
+Working<- read.csv("SI2015BiHourly.csv")
+
+Working<- Working %>%mutate(HourProper= hour)
+
+Working$HourProper<-  paste(Working$hour, ':00:00')
+
+Working<- Working %>% mutate(DateHour= ymd(date) + hms(HourProper)) %>% rename(Hour= hour, Day= day, Month= month, Date=date) %>% select(DateHour, Date, Hour, Month, Day, Turb, CHLugL, BGAugL, FDOMqsu, NO3_mgL,Discharge) 
+
+Working$Date<- ymd(Working$Date)
+
+write.csv(Working, file="SI2015B.csv", row.names = FALSE)
+```
+
+
+
+
+
+
+Below, different calibrations were idenitified and handled (places where the values would suddenly drop, and then rise again after approximately 1 month)
+To handle the FDOM and nitrate data, points that were problematic were replaced using the mice function. This was because the data was so problematic (ie there were some points that were in the 50s, while others were below 0. Increasing the median would not have been effective). This covered almost a month of data in 2015
+To handle the BGA data, a set value was added to all of the data that was lower, so that the median matched. This was possible because it was just a lower median followedby a higher median with set point were it dropped and raised, but the same sd
+```{r Handling Dif calibrations}
+#FDOM MC 2015
+MC.2015ts<- read.csv("MC2015.csv")
+ MC.2015ts[,9][MC.2015ts[,9]<95]<- NA
+ MC.2015ts1<- complete(mice(MC.2015ts, m=1, maxit=50, method='pmm'))
+ MC.2015.test<- MC.2015ts1 %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge))
+ MC.2015.test$Date<- ymd(MC.2015.test$Date) #DONE
+ ggplot(data=MC.2015.test)+ geom_line(mapping= aes(x=Date, y= FDOMqsu))
+ MC.2015.ts1<-ts(MC.2015ts1, freq = 12)
+ p15<-plot(MC.2015.ts1arg[, c(6, 7, 8, 9, 10)], main= "Water Quality in 2015")
+ 
+ #FDOM SI 2015
+ SI.2015ts<- read.csv("SI2015B.csv")
+ SI.2015ts<- SI.2015ts %>% filter (!(month==10 & day==2 & hour >20)) %>% filter(!(month==10 & day>2))
+  SI.2015ts[,9][SI.2015ts[,9]<81]<- NA
+  SI.2015ts[348:719,10]<- NA #Nitrate
+  SI.2015ts1<- SI.2015ts
+ 
+ #BGA
+ median(SI.2015ts[1:347,8])
+ median(SI.2015ts[c(348:718),8])
+  median(SI.2015ts[719:1128,8])
+  addto1<-median(SI.2015ts[c(348:718),8])-median(SI.2015ts[1:347,8])
+  addto2<-median(SI.2015ts[c(348:718),8])-median(SI.2015ts[719:1128,8])
+   median(SI.2015ts[1129:1479,8])
+
+    SI.2015ts1[1:348,8]<-(SI.2015ts[1:348,8] + addto1)
+   SI.2015ts1[719:1128,8]<-(SI.2015ts[719:1128,8] + addto2) 
+   median(SI.2015ts1[,8])
+    
+
+  SI.2015ts1<- complete(mice(SI.2015ts1, m=1, maxit=50, method='pmm'))
+  
+  SI.2015.ts1<-ts(SI.2015ts1, freq = 12)
+ plot(SI.2015.ts1[, c( 7, 8, 9, 10, 11)], main= "Water Quality in 2015")
+ 
+ SI.2015.test<- SI.2015ts1 %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge))
+ SI.2015.test$Date<- ymd(SI.2015.test$Date) #DONE
+ ggplot(data=SI.2015.test)+ geom_line(mapping= aes(x=Date, y= NO3_mgL))
+ 
+ #SI 2018 Nitrate
+ SI.2018ts<- read.csv("SI2018B.csv")
+ SI.2018ts[,10][SI.2018ts[,10]<0.1]<- NA #Replace with NA
+ SI.2018ts1<- complete(mice(SI.2018ts, m=1, maxit=50, method='pmm'))
+  SI.2018.test<- SI.2018ts1 %>% group_by(Date) %>% summarize(Turb= mean(Turb), CHLugL= mean(CHLugL), BGAugL= mean(BGAugL), 
+                                                           FDOMqsu=mean(FDOMqsu), NO3_mgL=mean(NO3_mgL),
+                                                           Discharge=mean(Discharge))
+ 
+ write.csv(MC.2015ts1, file="2015MCCal.csv", row.names = FALSE)
+ write.csv(SI.2015ts1, file="2015SICal.csv", row.names = FALSE)
+ write.csv(SI.2018ts1, file="2018SICal.csv", row.names = FALSE)
+ write.csv(MC.2015.test, file="2015MCCalDay.csv", row.names = FALSE)
+ write.csv(SI.2015.test, file="2015SICalDay.csv", row.names = FALSE)
+ write.csv(SI.2018.test, file="2018SICalDay.csv", row.names = FALSE)
+ ?mice
+```
+
